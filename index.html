@@ -1484,6 +1484,10 @@
 <p class="text-[8px] font-bold text-slate-400 mt-1 uppercase leading-tight">Normalmente se llena con el registro de entradas, dejar en 0 si no hay stock.</p>
 </div>
 <div>
+<label class="block font-bold text-slate-700 mb-1 uppercase text-[10px]">N.º DE ESTANTE</label>
+<input class="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition bg-slate-50 uppercase text-xs" id="sales-item-shelf" maxlength="30" placeholder="EJ: 03 / A-2" type="text"/>
+</div>
+<div>
 <label class="block font-bold text-slate-700 mb-1 uppercase text-[10px]">Imagen</label>
 <div class="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg bg-slate-50 flex items-center text-xs text-slate-500 overflow-hidden">
 <input accept="image/*" class="block w-full text-[10px] font-bold text-slate-500 file:mr-3 file:py-1 file:px-2 file:rounded file:border-0 file:font-bold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer uppercase" id="sales-item-image" type="file"/>
@@ -1595,7 +1599,8 @@
 <div class="w-12 h-12 shrink-0 bg-white border border-slate-200 rounded-lg overflow-hidden flex items-center justify-center cursor-pointer shadow-sm" id="sales-history-image-container"></div>
 <div class="min-w-0">
 <h3 class="text-base font-black text-slate-800 uppercase leading-none mb-1 truncate" id="sales-history-name">DETALLES</h3>
-<p class="text-[9px] text-indigo-600 font-bold tracking-widest uppercase mb-2" id="sales-history-code"></p>
+<p class="text-[9px] text-indigo-600 font-bold tracking-widest uppercase mb-1" id="sales-history-code"></p>
+<p class="text-[9px] text-slate-600 font-black uppercase mb-2" id="sales-history-shelf">ESTANTE: SIN ASIGNAR</p>
 <div class="flex gap-1.5">
 <button class="admin-only bg-indigo-600 hover:bg-indigo-700 text-white px-2 py-1 rounded text-[9px] font-black uppercase tracking-wider transition flex items-center gap-1 shadow-sm" onclick="document.getElementById('btn-quick-in-hidden').click()"><i class="w-3 h-3" data-lucide="package-plus"></i> ENTRADA</button>
 <button class="bg-orange-600 hover:bg-orange-700 text-white px-2 py-1 rounded text-[9px] font-black uppercase tracking-wider transition flex items-center gap-1 shadow-sm" onclick="document.getElementById('btn-quick-out-hidden').click()"><i class="w-3 h-3" data-lucide="package-minus"></i> SALIDA</button>
@@ -1659,6 +1664,8 @@
         let currentEditingUserId = null; let itemToDelete = null; let deleteType = null; let useLocalFallback = false;
 
         let currentInventorySearchResults = []; let currentSalesSearchResults = []; let hasSearchedInventory = false; let hasSearchedSales = false; let hasGeneratedReport = false;
+        let salesRealtimeChannel = null;
+        let refreshingVisibleSalesStock = false;
 
         document.addEventListener('DOMContentLoaded', () => {
             lucide.createIcons();
@@ -1667,6 +1674,7 @@
             setCurrentDateInputs();
             setupSearchListeners();
             setupKeyboardFriendlyForms();
+            setupSalesStockRefresh();
     
 
         function unlockTabletOrientation() {
@@ -1772,6 +1780,10 @@
         }
 
         async function handleLogout() {
+            if (salesRealtimeChannel) {
+                supabaseClient.removeChannel(salesRealtimeChannel);
+                salesRealtimeChannel = null;
+            }
             await supabaseClient.auth.signOut();
             location.reload();
         }
@@ -1845,6 +1857,7 @@
                 document.getElementById('cloud-status').classList.add('flex');
                 
                 applyRoleRestrictions();
+                setupSalesStockRealtime();
                 
                 const loginBox = document.getElementById('login-container');
                 if (!loginBox.classList.contains('hidden')) {
@@ -1924,7 +1937,15 @@
                 // ==============================================
 
                 supabaseClient.from('articulos_venta').select('*').order('nombre').then(({data, error}) => {
-                    if(!error) { articulosVenta = data || []; updateStats(); renderSalesCatalog(); } checkAllLoaded();
+                    if(!error) {
+                        articulosVenta = data || [];
+                        // El catálogo usa resultados de búsqueda independientes: actualizarlos
+                        // también evita mostrar stock obsoleto después de una sincronización.
+                        const byId = new Map(articulosVenta.map(item => [item.id, item]));
+                        if (hasSearchedSales) currentSalesSearchResults = currentSalesSearchResults.map(item => byId.get(item.id)).filter(Boolean);
+                        updateStats(); renderSalesCatalog(); updateOpenSalesHistoryStock();
+                    }
+                    checkAllLoaded();
                 });
                 supabaseClient.from('entradas_articulos').select('*').order('created_at', { ascending: false }).then(({data, error}) => {
                     if(!error) { entradasVenta = data || []; } checkAllLoaded();
@@ -2058,6 +2079,7 @@
                 mainContent.scrollTo({ top: 0, behavior: 'smooth' });
             }
 
+            if(view === 'sales' && hasSearchedSales) refreshVisibleSalesStock();
             if(view === 'reports') renderReports();
             if(view === 'received') { receivedDateOffset = 0; renderReceived(); }
             applyRoleRestrictions();
@@ -2394,6 +2416,101 @@
             lucide.createIcons();
         }
 
+        // Sincroniza la memoria, los resultados del buscador y las tarjetas del catálogo.
+        function applySalesArticleSnapshot(item) {
+            if (!item || !item.id) return;
+            const masterIndex = articulosVenta.findIndex(a => a.id === item.id);
+            if (masterIndex >= 0) articulosVenta[masterIndex] = {...articulosVenta[masterIndex], ...item};
+            else articulosVenta.push(item);
+
+            const resultIndex = currentSalesSearchResults.findIndex(a => a.id === item.id);
+            const query = (document.getElementById('sales-search')?.value || '').trim().toLowerCase();
+            const matches = !!query && (item.nombre || '').toLowerCase().includes(query);
+            if (resultIndex >= 0) {
+                if (!query || matches) currentSalesSearchResults[resultIndex] = {...currentSalesSearchResults[resultIndex], ...item};
+                else currentSalesSearchResults.splice(resultIndex, 1);
+            } else if (hasSearchedSales && matches) {
+                currentSalesSearchResults.push(item);
+            }
+            updateStats(); renderSalesCatalog(); updateOpenSalesHistoryStock(); saveLocalData();
+        }
+
+        function updateOpenSalesHistoryStock() {
+            const modal = document.getElementById('modal-sales-history');
+            if (!modal || modal.classList.contains('hidden') || !currentHistoryItemId) return;
+            const item = articulosVenta.find(a => a.id === currentHistoryItemId);
+            if (!item) return;
+            document.getElementById('sales-history-qty').innerText = Number(item.cantidad || 0);
+            document.getElementById('sales-history-shelf').innerText = `ESTANTE: ${item.estante || 'SIN ASIGNAR'}`;
+            const box = document.getElementById('sales-history-qty-container');
+            box.className = Number(item.cantidad || 0) > 0
+                ? 'p-4 border-b border-emerald-100 bg-emerald-50/50 text-center text-emerald-600'
+                : 'p-4 border-b border-red-100 bg-red-50/50 text-center text-red-600';
+            const warning = document.getElementById('sales-history-warning');
+            warning.classList.toggle('hidden', Number(item.cantidad || 0) > 0);
+            if (Number(item.cantidad || 0) <= 0) warning.innerText = 'REPONER STOCK';
+        }
+
+        function setupSalesStockRealtime() {
+            if (salesRealtimeChannel) return;
+            salesRealtimeChannel = supabaseClient.channel('consumibles-stock-live')
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'articulos_venta' }, payload => {
+                    if (payload.eventType === 'DELETE') {
+                        const id = payload.old?.id;
+                        if (!id) return;
+                        articulosVenta = articulosVenta.filter(a => a.id !== id);
+                        currentSalesSearchResults = currentSalesSearchResults.filter(a => a.id !== id);
+                        updateStats(); renderSalesCatalog(); saveLocalData();
+                    } else if (payload.new?.id) {
+                        applySalesArticleSnapshot(payload.new);
+                    }
+                })
+                .subscribe(status => {
+                    if (status === 'SUBSCRIBED') refreshVisibleSalesStock();
+                    if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+                        console.warn('Realtime no disponible. Se mantiene la sincronización periódica del catálogo.');
+                    }
+                });
+        }
+
+        async function refreshVisibleSalesStock() {
+            if (refreshingVisibleSalesStock || !hasSearchedSales || !currentSalesSearchResults.length) return;
+            if (document.getElementById('view-sales')?.classList.contains('hidden')) return;
+            refreshingVisibleSalesStock = true;
+            try {
+                const ids = [...new Set(currentSalesSearchResults.map(a => a.id))];
+                const { data, error } = await supabaseClient.from('articulos_venta').select('*').in('id', ids);
+                if (error) throw error;
+                const byId = new Map((data || []).map(a => [a.id, a]));
+                currentSalesSearchResults = currentSalesSearchResults.map(a => byId.get(a.id)).filter(Boolean);
+                (data || []).forEach(article => {
+                    const idx = articulosVenta.findIndex(a => a.id === article.id);
+                    if (idx >= 0) articulosVenta[idx] = article;
+                    else articulosVenta.push(article);
+                });
+                updateStats(); renderSalesCatalog(); updateOpenSalesHistoryStock(); saveLocalData();
+            } catch (error) {
+                console.warn('No se pudo refrescar el stock visible:', error);
+            } finally {
+                refreshingVisibleSalesStock = false;
+            }
+        }
+
+        function setupSalesStockRefresh() {
+            // Respaldo para bases donde no está habilitada la publicación Realtime.
+            setInterval(() => {
+                if (!document.hidden) refreshVisibleSalesStock();
+            }, 15000);
+            document.addEventListener('visibilitychange', () => {
+                if (!document.hidden) refreshVisibleSalesStock();
+            });
+            window.addEventListener('focus', refreshVisibleSalesStock);
+        }
+
+        function escapeSalesText(value) {
+            return String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'}[c]));
+        }
+
         function renderSalesCatalog() {
             const grid = document.getElementById('sales-grid');
             const emptyState = document.getElementById('empty-sales');
@@ -2416,7 +2533,7 @@
                 const card = document.createElement('div');
                 card.className = "tool-card bg-white rounded-xl border border-slate-200 p-1.5 flex items-center pr-2 shadow-sm cursor-pointer";
                 card.onclick = () => openSalesHistoryModal(item.id);
-                card.innerHTML = `<div class="w-10 h-10 bg-slate-50 flex items-center justify-center rounded overflow-hidden mr-2">${item.imagen_url ? `<img src="${item.imagen_url}" class="w-full h-full object-cover">` : '<i data-lucide="shopping-bag" class="text-slate-300 w-4 h-4"></i>'}</div><div class="flex-1 min-w-0"><h3 class="text-[10px] font-black uppercase truncate">${item.nombre}</h3><p class="text-[9px] font-bold ${item.cantidad>0?'text-emerald-600':'text-red-600'}">STOCK: ${item.cantidad}</p></div>${adminActions}`;
+                card.innerHTML = `<div class="w-10 h-10 bg-slate-50 flex items-center justify-center rounded overflow-hidden mr-2">${item.imagen_url ? `<img src="${item.imagen_url}" class="w-full h-full object-cover">` : '<i data-lucide="shopping-bag" class="text-slate-300 w-4 h-4"></i>'}</div><div class="flex-1 min-w-0"><h3 class="text-[10px] font-black uppercase truncate">${item.nombre}</h3><div class="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-1"><span class="text-[9px] font-black text-slate-600 bg-slate-100 rounded px-1.5 py-0.5">ESTANTE: ${escapeSalesText(item.estante || 'SIN ASIGNAR')}</span><span class="text-[9px] font-bold ${Number(item.cantidad)>0?'text-emerald-600':'text-red-600'}">STOCK: ${Number(item.cantidad || 0)}</span></div></div>${adminActions}`;
                 grid.appendChild(card);
             });
             lucide.createIcons();
@@ -2652,30 +2769,105 @@
             } catch(err) { console.error(err); showToast('ERROR', 'error'); } finally { btn.innerHTML = 'REGISTRAR SALIDA'; btn.disabled = false; }
         }
 
+        // Modificación condicional para no pisar entradas simultáneas de otros usuarios.
+        async function changeSalesStockSafely(articleId, delta) {
+            for (let attempt = 0; attempt < 5; attempt++) {
+                const { data: current, error: readError } = await supabaseClient
+                    .from('articulos_venta').select('*').eq('id', articleId).single();
+                if (readError) throw readError;
+                const previous = Number(current.cantidad || 0);
+                const next = previous + Number(delta);
+                if (!Number.isFinite(next) || next < 0) throw new Error('STOCK INSUFICIENTE PARA ESTA MODIFICACIÓN');
+                if (Number(delta) === 0) {
+                    applySalesArticleSnapshot(current);
+                    return current;
+                }
+                const { data: updated, error: updateError } = await supabaseClient
+                    .from('articulos_venta').update({ cantidad: next })
+                    .eq('id', articleId).eq('cantidad', current.cantidad)
+                    .select('*').maybeSingle();
+                if (updateError) throw updateError;
+                if (updated) {
+                    applySalesArticleSnapshot(updated);
+                    return updated;
+                }
+            }
+            throw new Error('EL STOCK CAMBIÓ SIMULTÁNEAMENTE. INTENTA DE NUEVO.');
+        }
+
         async function handleSalesInputSubmit(e) {
-            e.preventDefault(); const articleId = document.getElementById('sales-in-article-id').value; const qty = parseInt(document.getElementById('sales-in-qty').value); const dateStr = document.getElementById('sales-in-date').value; if(!articleId || qty <= 0) return;
-            const article = articulosVenta.find(a => a.id === articleId); if(!article) return; const [y, m, d] = dateStr.split('-'); const displayDate = d ? `${d}/${m}/${y}` : new Date().toLocaleDateString('es-ES');
-            const btn = document.querySelector('#form-sales-input button[type="submit"]'); btn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> GUARDANDO...'; btn.disabled = true; lucide.createIcons();
+            e.preventDefault();
+            const articleId = document.getElementById('sales-in-article-id').value;
+            const qty = Number(document.getElementById('sales-in-qty').value);
+            const dateStr = document.getElementById('sales-in-date').value;
+            if (!articleId || !Number.isInteger(qty) || qty <= 0 || !dateStr) {
+                showToast('SELECCIONA ARTÍCULO, FECHA Y CANTIDAD VÁLIDA', 'error'); return;
+            }
+            const article = articulosVenta.find(a => a.id === articleId);
+            if (!article) { showToast('ARTÍCULO NO ENCONTRADO', 'error'); return; }
+            const [y, m, d] = dateStr.split('-');
+            const displayDate = `${d}/${m}/${y}`;
+            const btn = document.querySelector('#form-sales-input button[type="submit"]');
+            btn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> GUARDANDO...';
+            btn.disabled = true; lucide.createIcons();
             try {
                 if (currentEditingSalesInputId) {
-                    const oldEntry = entradasVenta.find(e => e.id === currentEditingSalesInputId); const diff = qty - oldEntry.cantidad;
-                    await Promise.all([ supabaseClient.from('entradas_articulos').update({ cantidad: qty, fecha: displayDate }).eq('id', currentEditingSalesInputId), supabaseClient.from('articulos_venta').update({ cantidad: article.cantidad + diff }).eq('id', articleId) ]);
+                    const { data: oldEntry, error: oldError } = await supabaseClient
+                        .from('entradas_articulos').select('*').eq('id', currentEditingSalesInputId).single();
+                    if (oldError) throw oldError;
+                    if (oldEntry.articulo_id !== articleId) throw new Error('PARA CAMBIAR EL ARTÍCULO, ELIMINA ESTA ENTRADA Y REGISTRA OTRA.');
+                    const diff = qty - Number(oldEntry.cantidad || 0);
+                    const { error } = await supabaseClient.from('entradas_articulos')
+                        .update({ cantidad: qty, fecha: displayDate }).eq('id', oldEntry.id);
+                    if (error) throw error;
+                    try {
+                        await changeSalesStockSafely(articleId, diff);
+                    } catch (stockError) {
+                        const { error: rollbackError } = await supabaseClient.from('entradas_articulos')
+                            .update({ cantidad: oldEntry.cantidad, fecha: oldEntry.fecha }).eq('id', oldEntry.id);
+                        if (rollbackError) console.error('No se pudo restaurar la entrada:', rollbackError);
+                        throw stockError;
+                    }
+                    const idx = entradasVenta.findIndex(entry => entry.id === oldEntry.id);
+                    if (idx >= 0) entradasVenta[idx] = { ...oldEntry, cantidad: qty, fecha: displayDate };
                 } else {
-                    await Promise.all([ supabaseClient.from('entradas_articulos').insert([{ id: generateID('ENT'), articulo_id: articleId, nombre_articulo: article.nombre, cantidad: qty, fecha: displayDate }]), supabaseClient.from('articulos_venta').update({ cantidad: article.cantidad + qty }).eq('id', articleId) ]);
+                    const newEntry = { id: generateID('ENT'), articulo_id: articleId,
+                        nombre_articulo: article.nombre, cantidad: qty, fecha: displayDate };
+                    const { error } = await supabaseClient.from('entradas_articulos').insert([newEntry]);
+                    if (error) throw error;
+                    try {
+                        await changeSalesStockSafely(articleId, qty);
+                    } catch (stockError) {
+                        const { error: rollbackError } = await supabaseClient.from('entradas_articulos')
+                            .delete().eq('id', newEntry.id);
+                        if (rollbackError) console.error('No se pudo revertir la entrada:', rollbackError);
+                        throw stockError;
+                    }
+                    entradasVenta.unshift(newEntry);
                 }
-                showToast('ENTRADA REGISTRADA'); closeModal('modal-sales-input'); fetchInitialData();
-            } catch(err) { console.error(err); } finally { btn.innerHTML = 'GUARDAR'; btn.disabled = false; }
+                // Actualiza las cards inmediatamente, sin esperar a la carga global.
+                renderSalesCatalog(); updateOpenSalesHistoryStock(); saveLocalData();
+                showToast('ENTRADA REGISTRADA Y STOCK ACTUALIZADO', 'success');
+                closeModal('modal-sales-input');
+            } catch(err) {
+                console.error('Error registrando entrada:', err);
+                showToast(err.message || 'NO SE PUDO GUARDAR LA ENTRADA', 'error');
+                await refreshVisibleSalesStock();
+            } finally {
+                btn.innerHTML = 'GUARDAR'; btn.disabled = false;
+            }
         }
 
         async function handleSalesItemSubmit(e) {
             e.preventDefault(); const id = currentEditingSalesItemId || generateID('ART'); let code = document.getElementById('sales-item-code').value.trim().toUpperCase(); if (!currentEditingSalesItemId) { code = generateID('C'); } const nombre = document.getElementById('sales-item-name').value.trim().toUpperCase(); const cantidad = parseInt(document.getElementById('sales-item-qty').value) || 0; const fileInput = document.getElementById('sales-item-image'); 
             const btn = document.querySelector('#form-sales-item button[type="submit"]'); btn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i>...'; btn.disabled = true; lucide.createIcons();
-            if (fileInput.files && fileInput.files[0]) { resizeAndCompressImage(fileInput.files[0], 600, 600, 0.7, (img) => { saveSalesItem(id, code, nombre, cantidad, img, btn); }); } else { saveSalesItem(id, code, nombre, cantidad, null, btn); }
+            const estante = document.getElementById('sales-item-shelf').value.trim().toUpperCase();
+            if (fileInput.files && fileInput.files[0]) { resizeAndCompressImage(fileInput.files[0], 600, 600, 0.7, (img) => { saveSalesItem(id, code, nombre, cantidad, estante, img, btn); }); } else { saveSalesItem(id, code, nombre, cantidad, estante, null, btn); }
         }
 
-        async function saveSalesItem(id, id_articulo, nombre, cantidad, img, btn) {
+        async function saveSalesItem(id, id_articulo, nombre, cantidad, estante, img, btn) {
             try {
-                const data = { id, nombre, cantidad }; if (id_articulo) data.id_articulo = id_articulo; 
+                const data = { id, nombre, cantidad, estante }; if (id_articulo) data.id_articulo = id_articulo; 
                 
                 // Guardar la imagen en Storage si viene en formato Base64 de la cámara
                 if (img && img.startsWith('data:image')) {
@@ -2774,7 +2966,7 @@
         function resetLoanForm() { const f = document.getElementById('form-loan'); if (f) f.reset(); selectedToolsForLoan = []; renderSelectedTools(); }
         async function returnLoan(id) { const l = loans.find(x => x.id === id); if(!l) return; try { l.status = 'devuelto'; const promises = [supabaseClient.from('registro_prestamos').update({ estado: 'devuelto' }).eq('id', id)]; for (const t of l.tools) { const inv = inventory.find(i => i.id_articulo === t.id_articulo); if(inv) { inv.cantidad += t.borrowQty; promises.push(supabaseClient.from('inventory').update({ cantidad: inv.cantidad }).eq('id_articulo', t.id_articulo)); } } renderLoans(); renderInventory(); updateStats(); showToast('HERRAMIENTA RECIBIDA'); await Promise.all(promises); fetchInitialData(); } catch (err) { console.error(err); } }
         async function returnSingleTool(loanId, toolId) { const l = loans.find(x => x.id === loanId); if(!l) return; const tIndex = l.tools.findIndex(t => t.id_articulo === toolId); if(tIndex === -1) return; const t = l.tools[tIndex]; try { l.tools.splice(tIndex, 1); if (l.tools.length === 0) l.status = 'devuelto'; const inv = inventory.find(i => i.id_articulo === toolId); const promises = []; if (inv) { inv.cantidad += t.borrowQty; promises.push(supabaseClient.from('inventory').update({ cantidad: inv.cantidad }).eq('id_articulo', toolId)); } if (l.tools.length === 0) { promises.push(supabaseClient.from('registro_prestamos').update({ estado: 'devuelto', herramientas: l.tools }).eq('id', loanId)); } else { promises.push(supabaseClient.from('registro_prestamos').update({ herramientas: l.tools }).eq('id', loanId)); } renderLoans(); renderInventory(); updateStats(); showToast('ARTÍCULO RECIBIDO'); await Promise.all(promises); fetchInitialData(); } catch(err) { console.error(err); } }
-        function editSalesItem(id) { const i = articulosVenta.find(x => x.id === id); if(!i) return; currentEditingSalesItemId = i.id; document.getElementById('sales-item-id').value = i.id; document.getElementById('sales-item-code').value = i.id_articulo || ''; document.getElementById('sales-item-name').value = i.nombre; document.getElementById('sales-item-qty').value = i.cantidad; openModal('modal-sales-item'); }
+        function editSalesItem(id) { const i = articulosVenta.find(x => x.id === id); if(!i) return; currentEditingSalesItemId = i.id; document.getElementById('sales-item-id').value = i.id; document.getElementById('sales-item-code').value = i.id_articulo || ''; document.getElementById('sales-item-name').value = i.nombre; document.getElementById('sales-item-qty').value = i.cantidad; document.getElementById('sales-item-shelf').value = i.estante || ''; openModal('modal-sales-item'); }
         function editSalesInput(id) { const e = entradasVenta.find(x => x.id === id); if(!e) return; currentEditingSalesInputId = id; closeModal('modal-sales-history'); openModal('modal-sales-input'); selectSalesArticle('in', e.articulo_id); document.getElementById('sales-in-qty').value = e.cantidad; const dp = e.fecha.split('/'); if(dp.length === 3) document.getElementById('sales-in-date').value = `${dp[2]}-${dp[1]}-${dp[0]}`; }
         function editSalesOutput(id) { const s = salidasVenta.find(x => x.id === id); if(!s) return; currentEditingSalesOutputId = id; closeModal('modal-sales-history'); openModal('modal-sales-output'); selectedSalesOutArticles = []; const a = articulosVenta.find(x => x.id === s.articulo_id); if(a) { selectedSalesOutArticles.push({...a, outQty: s.cantidad}); renderSelectedSalesOut(); } document.getElementById('sales-out-uso').value = s.para_uso_en || ''; document.getElementById('sales-out-recibe').value = s.recibe || ''; }
         function editUserForm(id) { const u = systemUsers.find(x => x.id === id); if(!u) return; currentEditingUserId = id; document.getElementById('new-user-name').value = u.nombre_completo || ''; const em = document.getElementById('new-user-email'); em.value = u.email; em.readOnly = true; em.classList.add('opacity-50'); const pa = document.getElementById('new-user-pass'); pa.required = false; pa.value = ''; document.getElementById('new-user-rol').value = u.rol || 'usuario'; window.scrollTo({ top: 0, behavior: 'smooth' }); }
@@ -2801,7 +2993,7 @@
         
         function openSalesHistoryModal(itemId) {
             const article = articulosVenta.find(a => a.id === itemId); if(!article) return; currentHistoryItemId = itemId; 
-            document.getElementById('sales-history-name').innerText = article.nombre; document.getElementById('sales-history-code').innerText = (article.id_articulo || 'S/C').toUpperCase();
+            document.getElementById('sales-history-name').innerText = article.nombre; document.getElementById('sales-history-code').innerText = (article.id_articulo || 'S/C').toUpperCase(); document.getElementById('sales-history-shelf').innerText = `ESTANTE: ${article.estante || 'SIN ASIGNAR'}`;
             const img = document.getElementById('sales-history-image-container'); if (img) { img.innerHTML = article.imagen_url ? `<img src="${article.imagen_url}" class="w-full h-full object-cover">` : '<i data-lucide="shopping-bag" class="text-slate-300 w-5 h-5"></i>'; img.onclick = () => { if(article.imagen_url) openImageViewer(article.imagen_url); }; }
             const v = document.getElementById('sales-history-qty'); v.innerText = article.cantidad;
             document.getElementById('sales-history-qty-container').className = article.cantidad > 0 ? 'p-4 border-b border-emerald-100 bg-emerald-50/50 text-center text-emerald-600' : 'p-4 border-b border-red-100 bg-red-50/50 text-center text-red-600';
@@ -2843,7 +3035,7 @@
         function exportToExcel(type) {
             let data = []; let fn = ''; let sn = '';
             if (type === 'herramientas') { if (inventory.length === 0) return; data = inventory.map(i => ({ 'ID': i.id_articulo, 'NOMBRE': i.nombre, 'CANT': i.cantidad, 'EST': i.estante, 'FILA': i.fila })); fn = 'Inventario.xlsx'; sn = 'Herramientas'; }
-            else if (type === 'consumibles') { if (articulosVenta.length === 0) return; data = articulosVenta.map(i => ({ 'CÓDIGO': i.id_articulo, 'NOMBRE': i.nombre, 'CANT': i.cantidad })); fn = 'Consumibles.xlsx'; sn = 'Consumibles'; }
+            else if (type === 'consumibles') { if (articulosVenta.length === 0) return; data = articulosVenta.map(i => ({ 'CÓDIGO': i.id_articulo, 'NOMBRE': i.nombre, 'ESTANTE': i.estante || '', 'CANT': i.cantidad })); fn = 'Consumibles.xlsx'; sn = 'Consumibles'; }
             if (data.length > 0) { const ws = XLSX.utils.json_to_sheet(data); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, sn); XLSX.writeFile(wb, fn); showToast('EXPORTADO'); }
         }
 
@@ -2935,5 +3127,3 @@
     </script>
 </body>
 </html>
-
-
