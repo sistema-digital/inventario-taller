@@ -898,6 +898,43 @@
             padding-bottom: .75rem !important;
         }
 
+        /* Formulario de Salidas como única pantalla visible para supervisores. */
+        #view-supervisor-output #modal-sales-output {
+            position: static !important;
+            inset: auto !important;
+            z-index: auto !important;
+            padding: 0 !important;
+            background: transparent !important;
+            backdrop-filter: none !important;
+            align-items: stretch !important;
+            justify-content: stretch !important;
+            overflow: visible !important;
+        }
+        #view-supervisor-output #modal-sales-output > div {
+            width: 100% !important;
+            max-width: none !important;
+            height: auto !important;
+            max-height: none !important;
+            overflow: visible !important;
+            border: 1px solid #e2e8f0;
+            border-radius: 1rem !important;
+        }
+        #view-supervisor-output #form-sales-output {
+            max-height: none !important;
+            overflow: visible !important;
+            flex: none !important;
+        }
+        #view-supervisor-output #form-sales-output > .space-y-3 {
+            padding-bottom: .5rem !important;
+        }
+        #view-supervisor-output .supervisor-output-dismiss { display: none !important; }
+        #view-supervisor-output #selected-sales-out-list { max-height: none !important; }
+        .order-state-pill { display:inline-flex; align-items:center; gap:.35rem; font-size:10px; font-weight:900; border-radius:999px; padding:.35rem .75rem; letter-spacing:.06em; }
+        .order-pending-pill { background:#fef3c7; color:#92400e; border:1px solid #fde68a; }
+        .order-delivered-pill { background:#dcfce7; color:#166534; border:1px solid #bbf7d0; }
+        .order-card { background:white; border:1px solid #e2e8f0; border-radius:1.1rem; overflow:hidden; box-shadow:0 5px 20px rgba(15,23,42,.045); }
+        .order-card-label { color:#64748b; font-size:10px; font-weight:850; text-transform:uppercase; }
+        @media (max-width:640px) { .orders-header-actions { width:100%; } .orders-header-actions button { flex:1; } }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 font-sans h-screen flex flex-col overflow-hidden text-sm">
@@ -1118,6 +1155,9 @@
 <button class="admin-supervisor menu-action-tile bg-orange-600 text-white px-4 py-4 rounded-2xl hover:bg-orange-700 transition shadow-sm flex flex-col items-start justify-center gap-2 text-left" onclick="openModal('modal-sales-output')">
 <i class="w-5 h-5" data-lucide="package-minus"></i><span class="text-xs font-black uppercase tracking-widest">Salida</span><span class="text-[10px] text-orange-50 font-bold uppercase">Registrar retiro</span>
 </button>
+<button class="admin-only menu-action-tile bg-amber-50 text-amber-900 border border-amber-200 px-4 py-4 rounded-2xl hover:bg-amber-100 transition shadow-sm flex flex-col items-start justify-center gap-2 text-left" onclick="switchView('admin-orders')">
+<i class="w-5 h-5" data-lucide="clipboard-check"></i><span class="text-xs font-black uppercase tracking-widest">Pedidos pendientes</span><span class="text-[10px] text-amber-800/80 font-bold uppercase">Verificar entrega de supervisores</span>
+</button>
 <button class="admin-only menu-action-tile bg-white text-indigo-700 border border-indigo-200 px-4 py-4 rounded-2xl hover:bg-indigo-50 transition shadow-sm flex flex-col items-start justify-center gap-2 text-left" onclick="openModal('modal-sales-item')">
 <i class="w-5 h-5" data-lucide="plus"></i><span class="text-xs font-black uppercase tracking-widest">Nuevo artículo</span><span class="text-[10px] text-indigo-700/70 font-bold uppercase">Crear artículo base</span>
 </button>
@@ -1126,6 +1166,44 @@
 </button>
 </div>
 </div>
+</section>
+
+<!-- VISTA EXCLUSIVA DEL SUPERVISOR: SOLO SALIDAS -->
+<section class="max-w-3xl mx-auto hidden w-full px-3 sm:px-6 py-4 sm:py-6" id="view-supervisor-output">
+    <div class="mb-4 rounded-2xl bg-slate-900 text-white p-4 sm:p-5 shadow-sm">
+        <div class="flex items-center gap-3">
+            <div class="bg-orange-500/20 text-orange-300 rounded-xl p-3"><i data-lucide="package-minus" class="w-6 h-6"></i></div>
+            <div><h2 class="text-xl font-black uppercase tracking-tight">Salidas de consumibles</h2>
+            <p class="text-[10px] font-bold uppercase tracking-wider text-slate-300 mt-1">Registrar retiro de artículos</p></div>
+        </div>
+    </div>
+    <div class="mb-3 flex justify-end">
+        <button type="button" onclick="switchView('my-orders')" class="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 text-white px-4 py-2.5 text-xs font-black uppercase shadow-sm hover:bg-indigo-700"><i data-lucide="clipboard-list" class="w-4 h-4"></i> Mis pedidos <span id="supervisor-pending-count" class="rounded-full bg-white/20 px-2 py-0.5 text-[10px]"></span></button>
+    </div>
+    <div id="supervisor-output-host"></div>
+</section>
+
+<!-- PEDIDOS DEL SUPERVISOR: PENDIENTES E HISTORIAL -->
+<section id="view-my-orders" class="max-w-4xl mx-auto hidden w-full px-3 sm:px-6 py-4 sm:py-6">
+    <div class="bg-slate-900 rounded-2xl p-4 sm:p-5 text-white mb-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div><h2 class="text-xl sm:text-2xl font-black uppercase flex items-center gap-2"><i data-lucide="clipboard-list" class="w-5 h-5"></i> Mis pedidos</h2><p class="text-slate-300 text-xs mt-1">Consulta tus solicitudes y entregas verificadas.</p></div>
+            <div class="orders-header-actions flex gap-2"><button type="button" onclick="switchView('supervisor-output')" class="flex items-center justify-center gap-2 rounded-xl bg-orange-600 hover:bg-orange-700 text-white px-3 py-2.5 text-[11px] font-black uppercase"><i data-lucide="plus" class="w-4 h-4"></i> Nueva salida</button><button type="button" onclick="loadMyOrders()" class="p-2.5 rounded-xl bg-white/15 hover:bg-white/25" title="Actualizar pedidos"><i data-lucide="refresh-cw" class="w-4 h-4"></i></button></div>
+        </div>
+    </div>
+    <div class="flex items-center gap-2 mb-3"><h3 class="font-black text-sm text-slate-800 uppercase">Pendientes de entrega</h3><span id="my-orders-pending-count" class="bg-amber-100 text-amber-800 rounded-full font-black text-xs px-2 py-0.5">0</span></div>
+    <div id="my-orders-pending" class="grid grid-cols-1 gap-3 mb-8"><p class="text-slate-500 text-xs">Cargando pedidos...</p></div>
+    <div class="bg-white rounded-2xl border border-slate-200 p-3 sm:p-4 mb-3">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3"><div><h3 class="text-sm font-black text-slate-900 uppercase">Historial de entregas</h3><p class="text-[10px] font-bold text-slate-400 mt-1">Pedidos confirmados por el administrador.</p></div><div class="flex gap-2 flex-wrap"><select id="my-orders-filter-mode" onchange="applyMyOrdersHistoryFilter()" aria-label="Filtrar historial" class="border border-slate-200 rounded-lg px-3 py-2 text-xs font-bold uppercase bg-slate-50"><option value="month">Por mes</option><option value="day">Por día</option></select><input type="month" id="my-orders-month" onchange="renderMyOrders()" aria-label="Mes del historial" class="border border-slate-200 rounded-lg px-2 py-2 text-xs font-bold bg-slate-50"/><input type="date" id="my-orders-day" onchange="renderMyOrders()" aria-label="Día del historial" class="hidden border border-slate-200 rounded-lg px-2 py-2 text-xs font-bold bg-slate-50"/></div></div>
+    </div>
+    <div id="my-orders-history" class="grid grid-cols-1 gap-3"><p class="text-slate-500 text-xs">Cargando historial...</p></div>
+</section>
+
+<!-- CONFIRMACIÓN DEL ADMINISTRADOR: PEDIDOS PENDIENTES DE TODOS LOS DÍAS -->
+<section id="view-admin-orders" class="max-w-4xl mx-auto hidden w-full px-3 sm:px-6 py-4 sm:py-6 admin-only">
+    <div class="view-return-row"><button class="view-back-btn" onclick="switchView('consumibles-menu')"><i data-lucide="arrow-left"></i> Volver a consumibles</button></div>
+    <div class="bg-slate-900 rounded-2xl p-4 sm:p-5 text-white mb-4 flex items-center justify-between gap-2"><div><h2 class="font-black text-xl uppercase">Pedidos por entregar</h2><p class="text-slate-300 text-xs mt-1">Confirma la entrega de pedidos completos.</p></div><button onclick="loadAdminPendingOrders()" class="bg-white/15 rounded-lg p-2.5 hover:bg-white/25" title="Actualizar"><i data-lucide="refresh-cw" class="w-4 h-4"></i></button></div>
+    <div id="admin-orders-pending" class="space-y-3"><p class="text-slate-500 text-xs">Cargando pendientes...</p></div>
 </section>
 
 <!-- VISTA MENÚ: USUARIOS -->
@@ -1561,7 +1639,7 @@
 <div class="bg-white w-full h-full sm:h-[85vh] sm:max-h-[95vh] sm:max-w-md rounded-xl shadow-xl modal-enter flex flex-col">
 <div class="flex justify-between items-center p-3 sm:p-4 border-b border-slate-100 bg-slate-50 rounded-t-xl">
 <h3 class="text-base font-black text-slate-800 uppercase">SALIDAS FORM</h3>
-<button class="text-slate-400 hover:text-slate-600 transition" onclick="closeModal('modal-sales-output')"><i class="w-5 h-5" data-lucide="x"></i></button>
+<button class="supervisor-output-dismiss text-slate-400 hover:text-slate-600 transition" onclick="closeModal('modal-sales-output')"><i class="w-5 h-5" data-lucide="x"></i></button>
 </div>
 <form class="p-3 sm:p-4 overflow-y-auto flex-1 flex flex-col" id="form-sales-output" onsubmit="handleSalesOutputSubmit(event)">
 <div class="space-y-3 pb-20">
@@ -1597,7 +1675,7 @@
 </div>
 </div>
 <div class="mt-4 pt-3 border-t border-slate-100 flex justify-end gap-2 shrink-0">
-<button class="px-3 py-1.5 text-xs text-orange-600 border border-orange-200 hover:bg-orange-50 rounded-lg transition font-bold uppercase" onclick="closeModal('modal-sales-output')" type="button">CANCELAR</button>
+<button class="supervisor-output-dismiss px-3 py-1.5 text-xs text-orange-600 border border-orange-200 hover:bg-orange-50 rounded-lg transition font-bold uppercase" onclick="closeModal('modal-sales-output')" type="button">CANCELAR</button>
 <button class="px-3 py-1.5 text-xs bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition font-black shadow-lg uppercase tracking-wider" type="submit">REGISTRAR SALIDA</button>
 </div>
 </form>
@@ -1679,6 +1757,13 @@
         let currentInventorySearchResults = []; let currentSalesSearchResults = []; let hasSearchedInventory = false; let hasSearchedSales = false; let hasGeneratedReport = false;
         let salesRealtimeChannel = null;
         let refreshingVisibleSalesStock = false;
+        let myOrdersRows = [];
+        let adminPendingRows = [];
+        let ordersRealtimeChannel = null;
+        let orderRefreshTimer = null;
+        let currentUserId = null;
+        let loadingMyOrders = false;
+        let loadingAdminOrders = false;
 
         document.addEventListener('DOMContentLoaded', () => {
             lucide.createIcons();
@@ -1688,6 +1773,7 @@
             setupSearchListeners();
             setupKeyboardFriendlyForms();
             setupSalesStockRefresh();
+            setupOrderStatusSync();
     
 
         function unlockTabletOrientation() {
@@ -1797,6 +1883,7 @@
                 supabaseClient.removeChannel(salesRealtimeChannel);
                 salesRealtimeChannel = null;
             }
+            if (ordersRealtimeChannel) { supabaseClient.removeChannel(ordersRealtimeChannel); ordersRealtimeChannel = null; }
             await supabaseClient.auth.signOut();
             location.reload();
         }
@@ -1808,18 +1895,8 @@
             const cached = await loadLocalData();
             if (cached) {
                 inventory = cached.inventory || []; loans = cached.loans || []; articulosVenta = cached.articulosVenta || []; entradasVenta = cached.entradasVenta || []; salidasVenta = cached.salidasVenta || []; systemUsers = cached.systemUsers || [];
-                if (cached.currentUserRole) currentUserRole = cached.currentUserRole;
-                if (cached.currentUserName) currentUserName = cached.currentUserName;
-                
+                // El rol del caché no concede permisos: esperar confirmación de Supabase.
                 updateStats(); updateApplicantDatalists(); renderInventory(); renderLoans(); renderSalesCatalog(); renderUsers(); renderReports(); renderReceived();
-                const loginBox = document.getElementById('login-container');
-                if (!loginBox.classList.contains('hidden')) {
-                    loginBox.classList.add('hidden');
-                    const app = document.getElementById('app-container');
-                    app.classList.remove('hidden');
-                    setTimeout(() => app.classList.remove('opacity-0'), 50);
-                    switchView('home');
-                }
             }
             
             fetchInitialData();
@@ -1839,6 +1916,7 @@
             }, 150);
             inventory = []; loans = []; articulosVenta = []; entradasVenta = []; salidasVenta = []; systemUsers = []; selectedSalesOutArticles = []; selectedToolsForLoan = [];
             currentInventorySearchResults = []; currentSalesSearchResults = []; hasSearchedInventory = false; hasSearchedSales = false; hasGeneratedReport = false;
+            myOrdersRows = []; adminPendingRows = []; currentUserId = null;
         }
 
         function forceSync() {
@@ -1857,7 +1935,10 @@
                 if (!session) { showLoginScreen(); resolve(); return; }
                 
                 const user = session.user;
+                currentUserId = user.id;
                 const userEmail = user.email.toLowerCase().trim();
+                currentUserRole = 'usuario';
+                currentUserName = userEmail;
                 if (userEmail === 'tes@gmail.com') { currentUserRole = 'admin'; currentUserName = 'ADMIN'; }
                 else {
                     const { data: ud } = await supabaseClient.from('usuarios').select('rol, nombre_completo').eq('id', user.id).single();
@@ -1871,6 +1952,7 @@
                 
                 applyRoleRestrictions();
                 setupSalesStockRealtime();
+                setupOrdersRealtime();
                 
                 const loginBox = document.getElementById('login-container');
                 if (!loginBox.classList.contains('hidden')) {
@@ -1878,7 +1960,10 @@
                     const app = document.getElementById('app-container');
                     app.classList.remove('hidden');
                     setTimeout(() => app.classList.remove('opacity-0'), 50);
-                    switchView('home');
+                    switchView(currentUserRole === 'supervisor' ? 'supervisor-output' : 'home');
+                } else if (currentUserRole === 'supervisor') {
+                    const pedidosVisible = !document.getElementById('view-my-orders')?.classList.contains('hidden');
+                    if (!pedidosVisible) switchView('supervisor-output');
                 }
 
                 let tablesLoaded = 0;
@@ -2069,9 +2154,31 @@
             if(document.getElementById('sales-in-date')) document.getElementById('sales-in-date').value = now.toISOString().split('T')[0];
         }
 
+        // Reutiliza el formulario existente, sin duplicar entradas ni salidas.
+        let originalSalesOutputParent = null;
+        function configureSupervisorOutputView() {
+            const modal = document.getElementById('modal-sales-output');
+            const host = document.getElementById('supervisor-output-host');
+            if (!modal || !host) return;
+            if (!originalSalesOutputParent) originalSalesOutputParent = modal.parentNode;
+            if (currentUserRole === 'supervisor') {
+                if (modal.parentNode !== host) host.appendChild(modal);
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+            } else if (modal.parentNode === host) {
+                originalSalesOutputParent.appendChild(modal);
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }
+        }
+
         function switchView(view) {
-            const allViews = ['home', 'tools-menu', 'consumibles-menu', 'users-menu', 'inventory', 'loans', 'sales', 'reports', 'users', 'received'];
-            const operationViews = ['home', 'tools-menu', 'consumibles-menu', 'users-menu', 'inventory', 'loans', 'sales', 'received'];
+            // El supervisor únicamente tiene acceso a Salidas y Mis pedidos.
+            if (currentUserRole === 'supervisor' && !['supervisor-output', 'my-orders'].includes(view)) view = 'supervisor-output';
+            if (currentUserRole !== 'admin' && view === 'admin-orders') view = 'home';
+            if (currentUserRole !== 'supervisor' && ['supervisor-output','my-orders'].includes(view)) view = 'home';
+            const allViews = ['home', 'tools-menu', 'consumibles-menu', 'users-menu', 'inventory', 'loans', 'sales', 'reports', 'users', 'received', 'supervisor-output', 'my-orders', 'admin-orders'];
+            const operationViews = ['home', 'tools-menu', 'consumibles-menu', 'users-menu', 'inventory', 'loans', 'sales', 'received', 'supervisor-output', 'my-orders', 'admin-orders'];
             const menuChildViews = ['tools-menu', 'consumibles-menu', 'users-menu'];
             const mainContent = document.getElementById('main-content');
 
@@ -2095,6 +2202,8 @@
             if(view === 'sales' && hasSearchedSales) refreshVisibleSalesStock();
             if(view === 'reports') renderReports();
             if(view === 'received') { receivedDateOffset = 0; renderReceived(); }
+            if(view === 'my-orders') loadMyOrders();
+            if(view === 'admin-orders') loadAdminPendingOrders();
             applyRoleRestrictions();
             if(window.lucide) lucide.createIcons();
         }
@@ -2107,6 +2216,7 @@
             document.querySelectorAll('.admin-supervisor').forEach(el => el.style.display = (isAdmin || isSupervisor) ? '' : 'none');
             document.querySelectorAll('.hide-from-supervisor').forEach(el => el.style.display = isSupervisor ? 'none' : '');
             document.querySelectorAll('.admin-user').forEach(el => el.style.display = (isAdmin || isUsuario) ? '' : 'none');
+            configureSupervisorOutputView();
         }
 
         async function generateReportDB() {
@@ -2298,6 +2408,192 @@
             lucide.createIcons();
         }
 
+        // =========================================================
+        // MIS PEDIDOS: el estado oficial siempre se guarda en Supabase.
+        // Nunca se borra un pedido entregado: pasa al historial.
+        // =========================================================
+        function escapeOrderHTML(value) {
+            return String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+        }
+
+        function getOrderGroups(rows) {
+            const groups = new Map();
+            (rows || []).forEach(item => {
+                const id = item.pedido_id || item.id;
+                if (!groups.has(id)) groups.set(id, { id, items: [], created_at: item.created_at || null, estado: 'entregado' });
+                const g = groups.get(id);
+                g.items.push(item);
+                if (item.estado_entrega === 'pendiente') g.estado = 'pendiente';
+                if (item.created_at && (!g.created_at || item.created_at < g.created_at)) g.created_at = item.created_at;
+            });
+            return [...groups.values()].sort((a,b) => Date.parse(b.created_at || 0) - Date.parse(a.created_at || 0));
+        }
+
+        function orderDateTime(value) {
+            const date = new Date(value);
+            return Number.isNaN(date.getTime()) ? '-' : date.toLocaleString('es-PA', {dateStyle:'medium', timeStyle:'short'});
+        }
+
+        function orderCardHTML(group, canConfirm = false) {
+            const order = group.items[0];
+            const pending = group.estado === 'pendiente';
+            const units = group.items.reduce((sum, item) => sum + Number(item.cantidad || 0), 0);
+            const label = pending ? 'PENDIENTE' : 'ENTREGADO';
+            const button = canConfirm && pending
+                ? `<button type="button" onclick="confirmOrderDelivered('${escapeOrderHTML(group.id)}')" class="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs px-4 py-2.5 rounded-xl uppercase">Confirmar entrega completa</button>`
+                : '';
+            const delivered = !pending && order.entregado_en
+                ? `<div class="order-card-label mt-2">Entregado: ${escapeOrderHTML(orderDateTime(order.entregado_en))} · ${escapeOrderHTML(order.entregado_por || 'ADMIN')}</div>` : '';
+            return `<article class="order-card">
+                <div class="p-3 sm:p-4 flex flex-wrap justify-between items-center gap-2 border-b border-slate-100 bg-slate-50/70"><div class="min-w-0"><p class="text-xs sm:text-sm font-black text-slate-800 break-all">${escapeOrderHTML(group.id)}</p><p class="order-card-label mt-1">${escapeOrderHTML(orderDateTime(group.created_at))} · ${units} unidad(es)</p></div><span class="order-state-pill ${pending ? 'order-pending-pill':'order-delivered-pill'}">${label}</span></div>
+                <div class="p-3 sm:p-4"><div class="flex flex-wrap gap-2 justify-between text-[10px] uppercase font-bold text-slate-600 mb-3"><span>Recibe: <b class="text-slate-900">${escapeOrderHTML(order.recibe || '-')}</b></span>${canConfirm ? `<span>Solicitó: <b class="text-slate-900">${escapeOrderHTML(order.supervisor || '-')}</b></span>` : ''}</div>
+                <div class="space-y-2">${group.items.map(item => `<div class="flex justify-between items-center gap-3 bg-slate-50 rounded-lg px-3 py-2 text-xs"><span class="font-bold uppercase text-slate-700">${escapeOrderHTML(item.nombre_articulo || 'ARTÍCULO')}</span><span class="font-black text-slate-900 shrink-0">x${Number(item.cantidad) || 0}</span></div>`).join('')}</div>
+                <p class="mt-3 text-[10px] text-slate-500 uppercase font-semibold">Uso: ${escapeOrderHTML(order.para_uso_en || '-')}</p>${delivered}${button ? `<div class="mt-3 pt-3 border-t border-slate-100 flex justify-end">${button}</div>` : ''}</div></article>`;
+        }
+
+        function setupOrderStatusSync() {
+            // Respaldo de Realtime; consulta solamente cuando el usuario está viendo pedidos.
+            if (orderRefreshTimer) return;
+            orderRefreshTimer = setInterval(() => {
+                if (document.visibilityState === 'hidden') return;
+                if (currentUserRole === 'supervisor' && !document.getElementById('view-my-orders')?.classList.contains('hidden')) loadMyOrders(true);
+                if (currentUserRole === 'admin' && !document.getElementById('view-admin-orders')?.classList.contains('hidden')) loadAdminPendingOrders(true);
+            }, 12000);
+        }
+
+        function setupOrdersRealtime() {
+            if (ordersRealtimeChannel) return;
+            ordersRealtimeChannel = supabaseClient.channel('consumibles-pedidos-live')
+                .on('postgres_changes', {event:'*', schema:'public', table:'salidas_articulos'}, () => {
+                    if (currentUserRole === 'supervisor' && !document.getElementById('view-my-orders')?.classList.contains('hidden')) loadMyOrders(true);
+                    if (currentUserRole === 'admin' && !document.getElementById('view-admin-orders')?.classList.contains('hidden')) loadAdminPendingOrders(true);
+                }).subscribe();
+        }
+
+        function initMyOrdersDateFilters() {
+            const local = new Date();
+            const dateString = `${local.getFullYear()}-${String(local.getMonth()+1).padStart(2,'0')}-${String(local.getDate()).padStart(2,'0')}`;
+            const month = document.getElementById('my-orders-month');
+            const day = document.getElementById('my-orders-day');
+            if (month && !month.value) month.value = dateString.slice(0,7);
+            if (day && !day.value) day.value = dateString;
+        }
+
+        function applyMyOrdersHistoryFilter() {
+            const isDay = document.getElementById('my-orders-filter-mode')?.value === 'day';
+            document.getElementById('my-orders-day')?.classList.toggle('hidden', !isDay);
+            document.getElementById('my-orders-month')?.classList.toggle('hidden', isDay);
+            renderMyOrders();
+        }
+
+        async function loadMyOrders(silent = false) {
+            if (currentUserRole !== 'supervisor' || loadingMyOrders) return;
+            loadingMyOrders = true;
+            const pendingBox = document.getElementById('my-orders-pending');
+            if (!silent && pendingBox && !myOrdersRows.length) pendingBox.innerHTML = '<p class="text-xs text-slate-500 py-4">Consultando pedidos...</p>';
+            try {
+                const {data:{user}, error:authError} = await supabaseClient.auth.getUser();
+                if (authError || !user) throw authError || Error('Sin sesión');
+                const {data, error} = await supabaseClient.from('salidas_articulos')
+                    .select('*').eq('solicitante_id', user.id).not('pedido_id','is',null)
+                    .order('created_at', {ascending:false}).limit(1000);
+                if (error) throw error;
+                myOrdersRows = data || [];
+                renderMyOrders();
+            } catch (err) {
+                console.error('Mis pedidos:', err);
+                if(pendingBox) pendingBox.innerHTML = '<p class="text-red-600 font-bold text-xs p-4">No se pudieron cargar los pedidos. Comprueba la migración SQL y la conexión.</p>';
+                if (!silent) showToast('ERROR CONSULTANDO MIS PEDIDOS', 'error');
+            } finally { loadingMyOrders = false; }
+        }
+
+        function renderMyOrders() {
+            initMyOrdersDateFilters();
+            const groups = getOrderGroups(myOrdersRows);
+            const pending = groups.filter(g => g.estado === 'pendiente');
+            const delivered = groups.filter(g => g.estado === 'entregado');
+            const pendingBox = document.getElementById('my-orders-pending');
+            const countEl = document.getElementById('my-orders-pending-count');
+            if (pendingBox) pendingBox.innerHTML = pending.length
+                ? pending.map(g => orderCardHTML(g)).join('')
+                : '<div class="rounded-xl bg-white border border-slate-200 p-6 text-center text-sm text-slate-500">No tienes pedidos pendientes de entrega.</div>';
+            if (countEl) countEl.textContent = pending.length;
+            const navCount = document.getElementById('supervisor-pending-count');
+            if (navCount) navCount.textContent = pending.length ? pending.length : '';
+            const mode = document.getElementById('my-orders-filter-mode')?.value;
+            const selectedDate = mode === 'day' ? document.getElementById('my-orders-day')?.value : document.getElementById('my-orders-month')?.value;
+            const historyFiltered = delivered.filter(g => {
+                // Filtrar por fecha de registro del pedido (no de confirmación).
+                const date = new Date(g.created_at);
+                if (Number.isNaN(date.getTime())) return false;
+                const localDate = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
+                return mode === 'day' ? localDate === selectedDate : localDate.slice(0,7) === selectedDate;
+            });
+            const historyBox = document.getElementById('my-orders-history');
+            if (historyBox) historyBox.innerHTML = historyFiltered.length
+                ? historyFiltered.map(g => orderCardHTML(g)).join('')
+                : '<div class="rounded-xl bg-white border border-slate-200 p-6 text-center text-sm text-slate-500">No hay entregas confirmadas para el período seleccionado.</div>';
+            if (window.lucide) lucide.createIcons();
+        }
+
+        async function loadAdminPendingOrders(silent = false) {
+            if (currentUserRole !== 'admin' || loadingAdminOrders) return;
+            loadingAdminOrders = true;
+            const box = document.getElementById('admin-orders-pending');
+            if (!silent && box && !adminPendingRows.length) box.innerHTML = '<p class="text-xs text-slate-500">Buscando pedidos...</p>';
+            try {
+                const {data, error} = await supabaseClient.from('salidas_articulos').select('*')
+                    .eq('estado_entrega', 'pendiente').not('pedido_id','is',null)
+                    .order('created_at',{ascending:true}).limit(1000);
+                if (error) throw error;
+                adminPendingRows = data || [];
+                if (box) {
+                    const orders = getOrderGroups(adminPendingRows).reverse();
+                    box.innerHTML = orders.length ? orders.map(g => orderCardHTML(g,true)).join('')
+                        : '<div class="bg-white border border-slate-200 rounded-xl p-7 text-center text-slate-500 font-bold text-sm">No hay pedidos pendientes.</div>';
+                }
+            } catch(err) {
+                console.error('Pedidos pendientes del administrador:',err);
+                if(box) box.innerHTML = '<p class="p-4 text-xs text-red-600 font-bold">No se pudieron consultar los pedidos. Verifica la migración y los permisos de Supabase.</p>';
+                if(!silent) showToast('ERROR CONSULTANDO PENDIENTES','error');
+            } finally { loadingAdminOrders = false; }
+        }
+
+        function confirmOrderDelivered(pedidoId) {
+            if (currentUserRole !== 'admin' || !pedidoId) return;
+            const order = getOrderGroups(adminPendingRows).find(g => g.id === pedidoId);
+            const label = order ? `${order.items.length} artículo(s)` : 'el pedido completo';
+            document.getElementById('confirm-title').textContent = '¿Confirmar entrega?';
+            document.getElementById('confirm-desc').textContent = `Vas a marcar como ENTREGADO el pedido ${pedidoId} (${label}). Desaparecerá de los pendientes del supervisor y quedará en su historial.`;
+            const btn = document.getElementById('confirm-action-btn');
+            btn.textContent = 'SÍ, ENTREGADO';
+            btn.className = 'px-3 py-1.5 text-xs bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 font-black shadow-sm w-full uppercase';
+            btn.disabled = false;
+            btn.onclick = () => executeConfirmOrderDelivered(pedidoId);
+            openModal('modal-confirm');
+        }
+
+        async function executeConfirmOrderDelivered(pedidoId) {
+            if (currentUserRole !== 'admin') return;
+            const btn = document.getElementById('confirm-action-btn');
+            if(btn) { btn.disabled = true; btn.textContent = 'VERIFICANDO...'; }
+            try {
+                // Nunca borrar los datos. Solo se modifica el estado para conservar el historial.
+                const {data, error} = await supabaseClient.from('salidas_articulos')
+                    .update({estado_entrega:'entregado', entregado_por:currentUserName.toUpperCase(), entregado_en:new Date().toISOString()})
+                    .eq('pedido_id', pedidoId).eq('estado_entrega','pendiente').select('id');
+                if (error) throw error;
+                if (!data || !data.length) throw Error('Ningún registro modificado; comprueba permisos o si ya fue entregado.');
+                closeModal('modal-confirm');
+                showToast('PEDIDO VERIFICADO COMO ENTREGADO','success');
+                await loadAdminPendingOrders(true);
+                if (!document.getElementById('view-received')?.classList.contains('hidden')) renderReceived();
+            } catch (err) {
+                console.error('Error verificando entrega:',err);
+                showToast('NO SE PUDO CONFIRMAR LA ENTREGA','error');
+            } finally { if(btn) { btn.disabled = false; btn.textContent = 'SÍ, ENTREGADO'; } }
+        }
+
         let receivedDateOffset = 0;
         const VIRTUAL_DELIVERED_OUTPUTS_KEY = 'inventario_taller_salidas_entregadas_virtuales_v1';
 
@@ -2386,7 +2682,7 @@
 
             const deliveredIds = getVirtualDeliveredOutputIds();
             const outputsForDate = await getConsumableOutputsByDate(targetDate);
-            const filtered = outputsForDate.filter(record => !deliveredIds.has(String(record.id)));
+            const filtered = outputsForDate.filter(record => record.pedido_id || !deliveredIds.has(String(record.id)));
 
             if (filtered.length === 0) {
                 const emptyMessage = outputsForDate.length > 0
@@ -2418,9 +2714,10 @@
                     <td class="p-3 text-[10px] text-slate-600 font-bold">${s.para_uso_en || 'N/A'}</td>
                     <td class="p-3 text-[10px] text-slate-500 font-black">${s.supervisor || 'N/A'}</td>
                     <td class="p-3 text-center whitespace-nowrap">
-                        <button onclick="markSalesOutputDeliveredVirtual('${s.id}')" class="inline-flex items-center justify-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-600 text-white border border-emerald-700 hover:bg-emerald-700 transition text-[9px] font-black uppercase shadow-sm" title="Ocultar este registro como entregado solo en este dispositivo">
-                            <i data-lucide="check-circle-2" class="w-3.5 h-3.5"></i> Entregado
-                        </button>
+                        ${s.pedido_id ? (s.estado_entrega === 'entregado'
+                            ? '<span class="order-state-pill order-delivered-pill">ENTREGADO</span>'
+                            : (isAdmin ? `<button onclick="confirmOrderDelivered('${s.pedido_id}')" class="bg-emerald-600 text-white px-3 py-1.5 rounded-lg font-black text-[9px] uppercase hover:bg-emerald-700">Verificar pedido</button>` : '<span class="order-state-pill order-pending-pill">PENDIENTE</span>'))
+                            : `<button onclick="markSalesOutputDeliveredVirtual('${s.id}')" class="inline-flex items-center justify-center gap-1 px-3 py-1.5 rounded-lg bg-slate-200 text-slate-700 text-[9px] font-black uppercase" title="Ocultar registro antiguo en este dispositivo">Ocultar</button>`}
                     </td>
                     ${actionTd}
                 </tr>
@@ -2463,7 +2760,9 @@
             } else if (hasSearchedSales && matches) {
                 currentSalesSearchResults.push(item);
             }
-            updateStats(); renderSalesCatalog(); updateOpenSalesHistoryStock(); saveLocalData();
+            updateStats(); renderSalesCatalog(); updateOpenSalesHistoryStock();
+            if (selectedSalesOutArticles.some(selected => selected.id === item.id)) renderSelectedSalesOut();
+            saveLocalData();
         }
 
         function updateOpenSalesHistoryStock() {
@@ -2657,7 +2956,7 @@
                     res.innerHTML = match.map(t => {
                         const ex = selectedSalesOutArticles.find(s => s.id === t.id);
                         return `<div class="p-2 border-b ${t.cantidad > 0 ? (ex ? 'bg-orange-50 hover:bg-orange-100' : 'hover:bg-slate-50 cursor-pointer') : 'opacity-50 cursor-not-allowed bg-slate-50'} flex justify-between items-center transition" onclick="${t.cantidad > 0 ? `selectSalesArticleOut('${t.id}', event)` : `showToast('AGOTADO', 'error'); if(event) event.stopPropagation();`}">
-                            <div class="flex items-center gap-2 min-w-0"><div class="w-8 h-8 rounded border border-slate-200 bg-white overflow-hidden shrink-0 flex items-center justify-center shadow-sm" onclick="${t.imagen_url ? `openImageViewer('${t.imagen_url}'); if(event) event.stopPropagation();` : ''}">${t.imagen_url ? `<img src="${t.imagen_url}" loading="lazy" class="w-full h-full object-cover">` : '<i data-lucide="package" class="w-4 h-4 text-slate-300"></i>'}</div><div class="min-w-0"><p class="font-bold text-slate-800 uppercase truncate text-[11px] leading-tight mb-0.5">${t.nombre}</p><p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">CÓD: ${t.id_articulo || 'S/C'}</p></div></div>
+                            <div class="flex items-center gap-2 min-w-0"><div class="w-8 h-8 rounded border border-slate-200 bg-white overflow-hidden shrink-0 flex items-center justify-center shadow-sm" onclick="${t.imagen_url ? `openImageViewer('${t.imagen_url}'); if(event) event.stopPropagation();` : ''}">${t.imagen_url ? `<img src="${t.imagen_url}" loading="lazy" class="w-full h-full object-cover">` : '<i data-lucide="package" class="w-4 h-4 text-slate-300"></i>'}</div><div class="min-w-0"><p class="font-bold text-slate-800 uppercase truncate text-[11px] leading-tight mb-0.5">${t.nombre}</p><p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">CÓD: ${escapeSalesText(t.id_articulo || 'S/C')}</p><p class="text-[9px] font-bold uppercase mt-1 flex flex-wrap gap-x-2 gap-y-0.5"><span class="text-indigo-700">CAT: ${escapeSalesText(t.categoria || 'SIN CATEGORÍA')}</span><span class="text-orange-700">ESTANTE: ${escapeSalesText(t.estante || 'SIN ASIGNAR')}</span></p></div></div>
                             <div class="flex items-center gap-1.5 ml-2">${ex ? `<span class="text-orange-700 bg-orange-100 border border-orange-200 font-black px-1.5 py-0.5 rounded text-[9px] shrink-0 uppercase shadow-sm flex items-center gap-1"><i data-lucide="check" class="w-2.5 h-2.5"></i> (${ex.outQty})</span>` : ''}<span class="${t.cantidad > 0 ? 'text-emerald-700 bg-emerald-100 border border-emerald-200' : 'text-red-700 bg-red-100 border border-red-200'} font-black px-1.5 py-0.5 rounded text-[9px] shrink-0 uppercase shadow-sm">DISP: ${t.cantidad}</span></div>
                         </div>`;
                     }).join('') + `<div class="sticky bottom-0 w-full p-1.5 bg-slate-50 border-t border-slate-200 z-10 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]"><button type="button" onclick="closeDropdown('sales-out-results', 'sales-out-search')" class="w-full bg-[#ea580c] text-white py-2 rounded-md font-black uppercase tracking-widest text-[10px] hover:bg-orange-700 transition shadow-sm active:scale-[0.98]">APLICAR SELECCIÓN</button></div>`;
@@ -2673,9 +2972,34 @@
         function clearSalesSelection(type) { document.getElementById(`sales-${type}-article-id`).value = ''; document.getElementById(`sales-${type}-selected`).classList.add('hidden'); document.getElementById(`sales-${type}-selected`).classList.remove('flex'); document.getElementById(`sales-${type}-search`).classList.remove('hidden'); document.getElementById(`sales-${type}-search`).value = ''; }
 
         function renderSelectedSalesOut() {
-            const list = document.getElementById('selected-sales-out-list'); if(!list) return;
-            list.innerHTML = selectedSalesOutArticles.map(s => `<div class="flex justify-between items-center bg-white p-1.5 rounded-lg border text-[10px] shadow-sm mb-1.5"><div class="flex items-center gap-2 flex-1 min-w-0"><div class="w-8 h-8 rounded border bg-slate-50 overflow-hidden shrink-0 flex items-center justify-center cursor-pointer" onclick="${s.imagen_url ? `openImageViewer('${s.imagen_url}')` : ''}">${s.imagen_url ? `<img src="${s.imagen_url}" loading="lazy" class="w-full h-full object-cover">` : '<i data-lucide="package" class="w-4 h-4 text-slate-300"></i>'}</div><div class="min-w-0"><p class="truncate uppercase font-bold leading-tight text-slate-700">${s.nombre}</p><p class="text-[9px] ${s.cantidad - s.outQty === 0 ? 'text-red-500' : 'text-slate-400'} font-bold uppercase transition-colors">DISP: ${s.cantidad - s.outQty}</p></div></div><div class="flex items-center gap-1.5 ml-2"><button type="button" class="w-6 h-6 bg-white border border-slate-200 hover:bg-slate-100 transition rounded font-bold" onclick="updSalesOutSel('${s.id}',-1)">-</button><span class="font-black w-4 text-center">${s.outQty}</span><button type="button" class="w-6 h-6 bg-white border border-slate-200 hover:bg-slate-100 transition rounded font-bold" onclick="updSalesOutSel('${s.id}',1)">+</button><button type="button" class="text-red-500 hover:text-red-700 p-1 hover:bg-red-50 rounded transition ml-1" onclick="removeFromSalesOutSelection('${s.id}')" title="QUITAR"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button></div></div>`).join('');
-            if(selectedSalesOutArticles.length === 0) list.innerHTML = '<p class="text-[10px] text-slate-400 text-center uppercase font-bold italic py-1.5 border border-dashed border-slate-200 bg-slate-50 rounded">VACÍO</p>';
+            const list = document.getElementById('selected-sales-out-list');
+            if (!list) return;
+            // Consultar el artículo vigente para reflejar cambios de estante o categoría.
+            list.innerHTML = selectedSalesOutArticles.map(s => {
+                const latest = articulosVenta.find(a => a.id === s.id) || s;
+                const stock = Number(latest.cantidad || 0);
+                const remaining = stock - s.outQty;
+                return `<div class="flex justify-between items-center bg-white p-2 rounded-lg border text-[10px] shadow-sm mb-1.5 gap-2">
+                    <div class="flex items-center gap-2 flex-1 min-w-0">
+                        <div class="w-8 h-8 rounded border bg-slate-50 overflow-hidden shrink-0 flex items-center justify-center cursor-pointer" onclick="${s.imagen_url ? `openImageViewer('${s.imagen_url}')` : ''}">${s.imagen_url ? `<img src="${s.imagen_url}" loading="lazy" class="w-full h-full object-cover">` : '<i data-lucide="package" class="w-4 h-4 text-slate-300"></i>'}</div>
+                        <div class="min-w-0 flex-1">
+                            <p class="font-black uppercase leading-tight text-slate-800 break-words">${escapeSalesText(latest.nombre || s.nombre)}</p>
+                            <div class="flex flex-wrap items-center gap-1 mt-1">
+                                <span class="text-[9px] font-black text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded">CAT: ${escapeSalesText(latest.categoria || 'SIN CATEGORÍA')}</span>
+                                <span class="text-[9px] font-black text-orange-700 bg-orange-50 px-1.5 py-0.5 rounded">ESTANTE: ${escapeSalesText(latest.estante || 'SIN ASIGNAR')}</span>
+                                <span class="text-[9px] ${remaining <= 0 ? 'text-red-500' : 'text-slate-500'} font-bold uppercase">DISP: ${remaining}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-1.5 shrink-0">
+                        <button type="button" class="w-6 h-6 bg-white border border-slate-200 hover:bg-slate-100 transition rounded font-bold" onclick="updSalesOutSel('${s.id}',-1)">-</button>
+                        <span class="font-black w-4 text-center">${s.outQty}</span>
+                        <button type="button" class="w-6 h-6 bg-white border border-slate-200 hover:bg-slate-100 transition rounded font-bold" onclick="updSalesOutSel('${s.id}',1)">+</button>
+                        <button type="button" class="text-red-500 hover:text-red-700 p-1 hover:bg-red-50 rounded transition" onclick="removeFromSalesOutSelection('${s.id}')" title="QUITAR"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
+                    </div>
+                </div>`;
+            }).join('');
+            if (selectedSalesOutArticles.length === 0) list.innerHTML = '<p class="text-[10px] text-slate-400 text-center uppercase font-bold italic py-1.5 border border-dashed border-slate-200 bg-slate-50 rounded">VACÍO</p>';
             lucide.createIcons();
         }
 
@@ -2788,16 +3112,28 @@
                     await Promise.all(updates);
                 } else {
                     const inserts = []; const updates = [];
+                    const pedidoId = `PED-${Date.now()}-${generateID('N').slice(-6)}`;
+                    const auth = await supabaseClient.auth.getUser();
+                    if (auth.error || !auth.data?.user?.id) throw new Error('DEBES INICIAR SESIÓN PARA CREAR EL PEDIDO.');
                     for(const s of selectedSalesOutArticles) {
-                        const newRecord = { id: generateID('SAL'), articulo_id: s.id, nombre_articulo: s.nombre, cantidad: s.outQty, fecha, supervisor: currentUserName.toUpperCase(), para_uso_en: uso, recibe };
+                        const newRecord = { id: generateID('SAL'), articulo_id: s.id, nombre_articulo: s.nombre, cantidad: s.outQty, fecha, supervisor: currentUserName.toUpperCase(), para_uso_en: uso, recibe,
+                            pedido_id: pedidoId, solicitante_id: auth.data.user.id, estado_entrega: 'pendiente' };
                         inserts.push(newRecord);
                         salidasVenta.unshift(newRecord);
                         const a = articulosVenta.find(x => x.id === s.id); if(a) { updates.push(supabaseClient.from('articulos_venta').update({ cantidad: a.cantidad - s.outQty }).eq('id', s.id)); a.cantidad -= s.outQty; }
                     }
-                    await Promise.all([ supabaseClient.from('salidas_articulos').insert(inserts), ...updates ]);
+                    const { error: insertError } = await supabaseClient.from('salidas_articulos').insert(inserts);
+                    if (insertError) throw insertError;
+                    const stockResults = await Promise.all(updates);
+                    const stockError = stockResults.find(result => result.error);
+                    if (stockError) throw stockError.error;
                 }
                 renderReports(); renderSalesCatalog(); renderReceived();
-                showToast('SALIDA REGISTRADA'); closeModal('modal-sales-output'); fetchInitialData(); if(currentUserRole === 'supervisor') switchView('reports');
+                showToast(currentUserRole === 'supervisor' ? 'PEDIDO REGISTRADO: PENDIENTE DE ENTREGA' : 'SALIDA REGISTRADA');
+                closeModal('modal-sales-output');
+                if(currentUserRole === 'supervisor' && !currentEditingSalesOutputId) switchView('my-orders');
+                else if (currentUserRole === 'admin' && !document.getElementById('view-admin-orders').classList.contains('hidden')) loadAdminPendingOrders();
+                fetchInitialData();
             } catch(err) { console.error(err); showToast('ERROR', 'error'); } finally { btn.innerHTML = 'REGISTRAR SALIDA'; btn.disabled = false; }
         }
 
@@ -2980,6 +3316,10 @@
         }
 
         function confirmDeletion(id, type) {
+            const confirmActionButton = document.getElementById('confirm-action-btn');
+            confirmActionButton.className = 'px-3 py-1.5 text-xs bg-red-600 text-white rounded-lg hover:bg-red-700 font-black shadow-sm w-full uppercase';
+            confirmActionButton.textContent = 'SÍ, BORRAR';
+            confirmActionButton.disabled = false;
             itemToDelete = id; deleteType = type; const title = document.getElementById('confirm-title'); const desc = document.getElementById('confirm-desc'); const btn = document.getElementById('confirm-action-btn');
             if(type === 'tool') { title.innerText = '¿ELIMINAR?'; desc.innerText = 'SE BORRARÁ DEL INVENTARIO.'; btn.onclick = executeDeleteTool; }
             else if(type === 'loan') { title.innerText = '¿ELIMINAR?'; desc.innerText = 'VOLVERÁ AL INVENTARIO.'; btn.onclick = () => executeDeleteLoanRecord(id); }
@@ -3086,14 +3426,34 @@
             if (data.length > 0) { const ws = XLSX.utils.json_to_sheet(data); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, sn); XLSX.writeFile(wb, fn); showToast('EXPORTADO'); }
         }
 
-        function openModal(id) { 
+        function openModal(id) {
+            if (currentUserRole === 'supervisor') {
+                if (id === 'modal-sales-output') { switchView('supervisor-output'); return; }
+                return;
+            }
             const el = document.getElementById(id); el.classList.remove('hidden'); el.classList.add('flex'); 
             if(id==='modal-sales-item') refreshConsumableCategorySuggestions();
             if(id==='modal-tool'){ document.getElementById('modal-tool-title').innerText = currentEditingToolId?'EDITAR HERRAMIENTA':'AGREGAR HERRAMIENTA'; }
             if(id==='modal-loan'){ document.getElementById('modal-loan-title').innerText = currentEditingLoanId?'EDITAR PRÉSTAMO':'NUEVO PRÉSTAMO'; document.getElementById('modal-loan-submit').innerText = currentEditingLoanId?'GUARDAR':'REGISTRAR'; if(!currentEditingLoanId)resetLoanForm(); }
             if(id==='modal-sales-output'){ if(!currentEditingSalesOutputId){ selectedSalesOutArticles=[]; renderSelectedSalesOut(); document.getElementById('sales-out-uso').value=''; document.getElementById('sales-out-recibe').value=''; } }
         }
-        function closeModal(id) { document.getElementById(id).classList.add('hidden'); document.getElementById(id).classList.remove('flex'); if(id==='modal-tool') { currentEditingToolId=null; document.getElementById('form-tool').reset(); } if(id==='modal-loan') currentEditingLoanId=null; if(id==='modal-sales-item') { currentEditingSalesItemId=null; document.getElementById('form-sales-item').reset(); } if(id==='modal-sales-input') { currentEditingSalesInputId=null; document.getElementById('form-sales-input').reset(); clearSalesSelection('in'); setCurrentDateInputs(); } if(id==='modal-sales-output') { currentEditingSalesOutputId=null; document.getElementById('form-sales-output').reset(); } }
+        function closeModal(id) {
+            if (currentUserRole === 'supervisor' && id === 'modal-sales-output') {
+                document.getElementById('form-sales-output').reset();
+                currentEditingSalesOutputId = null;
+                selectedSalesOutArticles = [];
+                renderSelectedSalesOut();
+                document.getElementById('sales-out-search').value = '';
+                document.getElementById('sales-out-results').classList.add('hidden');
+                return; // Formulario fijo en la única vista del supervisor.
+            }
+            document.getElementById(id).classList.add('hidden'); document.getElementById(id).classList.remove('flex');
+            if(id==='modal-tool') { currentEditingToolId=null; document.getElementById('form-tool').reset(); }
+            if(id==='modal-loan') currentEditingLoanId=null;
+            if(id==='modal-sales-item') { currentEditingSalesItemId=null; document.getElementById('form-sales-item').reset(); }
+            if(id==='modal-sales-input') { currentEditingSalesInputId=null; document.getElementById('form-sales-input').reset(); clearSalesSelection('in'); setCurrentDateInputs(); }
+            if(id==='modal-sales-output') { currentEditingSalesOutputId=null; document.getElementById('form-sales-output').reset(); }
+        }
         function openImageViewer(s) { const v = document.getElementById('modal-image-viewer'); const i = document.getElementById('full-screen-image'); i.src = s; v.classList.remove('hidden'); v.classList.add('flex'); }
         function closeImageViewer() { document.getElementById('modal-image-viewer').classList.add('hidden'); document.getElementById('modal-image-viewer').classList.remove('flex'); }
 
