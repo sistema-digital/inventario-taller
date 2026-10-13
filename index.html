@@ -1759,6 +1759,9 @@
         let refreshingVisibleSalesStock = false;
         let myOrdersRows = [];
         let adminPendingRows = [];
+        // Datos de ubicación del catálogo para pedidos antiguos y recientes.
+        // Las salidas existentes referencian el artículo con articulo_id.
+        const orderArticleDetails = new Map();
         let ordersRealtimeChannel = null;
         let orderRefreshTimer = null;
         let currentUserId = null;
@@ -2434,6 +2437,34 @@
             return Number.isNaN(date.getTime()) ? '-' : date.toLocaleString('es-PA', {dateStyle:'medium', timeStyle:'short'});
         }
 
+        // Obtiene categoría y estante del catálogo, sin exigir columnas nuevas
+        // en salidas_articulos. También acepta una instantánea en la salida
+        // si en el futuro se agregan esos datos al registro histórico.
+        function getOrderItemDetails(item) {
+            const catalogItem = orderArticleDetails.get(String(item.articulo_id))
+                || articulosVenta.find(article => String(article.id) === String(item.articulo_id));
+            return {
+                categoria: item.categoria || catalogItem?.categoria || 'SIN CATEGORÍA',
+                estante: item.estante || catalogItem?.estante || 'SIN ASIGNAR'
+            };
+        }
+
+        async function loadOrderArticleDetails(rows) {
+            const ids = [...new Set((rows || []).map(row => row.articulo_id).filter(Boolean).map(String))];
+            if (!ids.length) return;
+            // No cargar todo el catálogo: buscar solo productos de los pedidos,
+            // incluso si no están presentes en el caché del supervisor.
+            for (let i = 0; i < ids.length; i += 150) {
+                const { data, error } = await supabaseClient.from('articulos_venta')
+                    .select('id, categoria, estante').in('id', ids.slice(i, i + 150));
+                if (error) {
+                    console.warn('No se pudo actualizar la ubicación de los pedidos:', error);
+                    return; // Permite seguir mostrando los artículos con el caché existente.
+                }
+                (data || []).forEach(article => orderArticleDetails.set(String(article.id), article));
+            }
+        }
+
         function orderCardHTML(group, canConfirm = false) {
             const order = group.items[0];
             const pending = group.estado === 'pendiente';
@@ -2447,7 +2478,19 @@
             return `<article class="order-card">
                 <div class="p-3 sm:p-4 flex flex-wrap justify-between items-center gap-2 border-b border-slate-100 bg-slate-50/70"><div class="min-w-0"><p class="text-xs sm:text-sm font-black text-slate-800 break-all">${escapeOrderHTML(group.id)}</p><p class="order-card-label mt-1">${escapeOrderHTML(orderDateTime(group.created_at))} · ${units} unidad(es)</p></div><span class="order-state-pill ${pending ? 'order-pending-pill':'order-delivered-pill'}">${label}</span></div>
                 <div class="p-3 sm:p-4"><div class="flex flex-wrap gap-2 justify-between text-[10px] uppercase font-bold text-slate-600 mb-3"><span>Recibe: <b class="text-slate-900">${escapeOrderHTML(order.recibe || '-')}</b></span>${canConfirm ? `<span>Solicitó: <b class="text-slate-900">${escapeOrderHTML(order.supervisor || '-')}</b></span>` : ''}</div>
-                <div class="space-y-2">${group.items.map(item => `<div class="flex justify-between items-center gap-3 bg-slate-50 rounded-lg px-3 py-2 text-xs"><span class="font-bold uppercase text-slate-700">${escapeOrderHTML(item.nombre_articulo || 'ARTÍCULO')}</span><span class="font-black text-slate-900 shrink-0">x${Number(item.cantidad) || 0}</span></div>`).join('')}</div>
+                <div class="space-y-2">${group.items.map(item => {
+                    const detail = getOrderItemDetails(item);
+                    return `<div class="flex justify-between items-center gap-3 bg-slate-50 rounded-lg px-3 py-2 text-xs">
+                        <div class="min-w-0 flex-1">
+                            <p class="font-bold uppercase text-slate-700 break-words">${escapeOrderHTML(item.nombre_articulo || 'ARTÍCULO')}</p>
+                            <div class="flex flex-wrap items-center gap-1.5 mt-1.5">
+                                <span class="text-[9px] font-black uppercase text-indigo-700 bg-indigo-50 border border-indigo-100 px-2 py-1 rounded-md">CATEGORÍA: ${escapeOrderHTML(detail.categoria)}</span>
+                                <span class="text-[9px] font-black uppercase text-orange-700 bg-orange-50 border border-orange-100 px-2 py-1 rounded-md">ESTANTE: ${escapeOrderHTML(detail.estante)}</span>
+                            </div>
+                        </div>
+                        <span class="font-black text-slate-900 shrink-0">x${Number(item.cantidad) || 0}</span>
+                    </div>`;
+                }).join('')}</div>
                 <p class="mt-3 text-[10px] text-slate-500 uppercase font-semibold">Uso: ${escapeOrderHTML(order.para_uso_en || '-')}</p>${delivered}${button ? `<div class="mt-3 pt-3 border-t border-slate-100 flex justify-end">${button}</div>` : ''}</div></article>`;
         }
 
@@ -2499,6 +2542,7 @@
                     .order('created_at', {ascending:false}).limit(1000);
                 if (error) throw error;
                 myOrdersRows = data || [];
+                await loadOrderArticleDetails(myOrdersRows);
                 renderMyOrders();
             } catch (err) {
                 console.error('Mis pedidos:', err);
@@ -2547,6 +2591,7 @@
                     .order('created_at',{ascending:true}).limit(1000);
                 if (error) throw error;
                 adminPendingRows = data || [];
+                await loadOrderArticleDetails(adminPendingRows);
                 if (box) {
                     const orders = getOrderGroups(adminPendingRows).reverse();
                     box.innerHTML = orders.length ? orders.map(g => orderCardHTML(g,true)).join('')
