@@ -2628,6 +2628,18 @@
             await refreshVisibleSalesStock();
         }
 
+        // PGRST202: la función SQL no existe en el proyecto o PostgREST aún no
+        // ha actualizado su caché. No borrar líneas por separado: el stock debe
+        // reintegrarse dentro de la misma transacción de base de datos.
+        function describePendingOrderError(err) {
+            const message = String(err?.message || '');
+            if (err?.code === 'PGRST202' || (message.includes('taller_guardar_pedido_pendiente') && message.includes('schema cache'))) {
+                return 'FALTA INSTALAR LA FUNCIÓN DE PEDIDOS EN SUPABASE. EJECUTA EL SQL DE REPARACIÓN.';
+            }
+            if (err?.code === '42501') return 'PERMISO DENEGADO. VERIFICA EL ROL DE TU CUENTA EN SUPABASE.';
+            return message || 'NO SE PUDO PROCESAR EL PEDIDO';
+        }
+
         async function savePendingOrderEdit(event) {
             event.preventDefault();
             if (!editingPendingOrderId || pendingOrderBusy) return;
@@ -2648,7 +2660,7 @@
                 closePendingOrderEditor();
                 showToast('PEDIDO ACTUALIZADO Y STOCK AJUSTADO','success');
                 await refreshOrdersAfterMutation(affectedIds);
-            } catch(err) { console.error('Guardar edición:',err); showToast(err.message || 'NO SE PUDO MODIFICAR EL PEDIDO','error'); }
+            } catch(err) { console.error('Guardar edición:',err); showToast(describePendingOrderError(err),'error'); }
             finally { pendingOrderBusy=false; btn.disabled=false; btn.textContent='GUARDAR CAMBIOS'; }
         }
 
@@ -2676,7 +2688,16 @@
                 closeModal('modal-confirm');
                 showToast('PEDIDO ELIMINADO Y STOCK REINTEGRADO','success');
                 await refreshOrdersAfterMutation(affectedIds);
-            } catch(err) { console.error('Eliminar pedido:',err); showToast(err.message || 'NO SE PUDO ELIMINAR EL PEDIDO','error'); }
+            } catch(err) {
+                console.error('Eliminar pedido:', err);
+                const explanation = describePendingOrderError(err);
+                showToast(explanation, 'error');
+                if (err?.code === 'PGRST202') {
+                    // Mantener la advertencia visible hasta que el usuario cierre el diálogo.
+                    document.getElementById('confirm-desc').textContent =
+                        'NO SE HA ELIMINADO EL PEDIDO NI MODIFICADO EL STOCK. FALTA INSTALAR LA FUNCIÓN DE PEDIDOS EN SUPABASE. SOLUCIÓN: EJECUTAR EL SQL DE REPARACIÓN.';
+                }
+            }
             finally { pendingOrderBusy=false; btn.disabled=false; btn.textContent='SÍ, ELIMINAR'; }
         }
 
