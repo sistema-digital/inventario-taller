@@ -1011,7 +1011,7 @@
 <button id="tab-home" onclick="switchView('home')"></button>
 <button id="tab-inventory" onclick="switchView('inventory')"></button>
 <button id="tab-loans" onclick="switchView('loans')"></button>
-<button id="tab-received" onclick="switchView('received')"></button>
+
 <button id="tab-sales" onclick="switchView('sales')"></button>
 <button id="tab-reports" onclick="switchView('reports')"></button>
 <button id="tab-users" onclick="switchView('users')"></button>
@@ -1161,9 +1161,7 @@
 <button class="admin-only menu-action-tile bg-white text-indigo-700 border border-indigo-200 px-4 py-4 rounded-2xl hover:bg-indigo-50 transition shadow-sm flex flex-col items-start justify-center gap-2 text-left" onclick="openModal('modal-sales-item')">
 <i class="w-5 h-5" data-lucide="plus"></i><span class="text-xs font-black uppercase tracking-widest">Nuevo artículo</span><span class="text-[10px] text-indigo-700/70 font-bold uppercase">Crear artículo base</span>
 </button>
-<button class="admin-user menu-action-tile bg-white text-slate-700 border border-slate-200 px-4 py-4 rounded-2xl hover:bg-slate-50 transition shadow-sm flex flex-col items-start justify-center gap-2 text-left" onclick="switchView('received')">
-<i class="w-5 h-5" data-lucide="check-square"></i><span class="text-xs font-black uppercase tracking-widest">Recibidos del día</span><span class="text-[10px] text-slate-500 font-bold uppercase">Ver registros de hoy</span>
-</button>
+
 </div>
 </div>
 </section>
@@ -1286,36 +1284,6 @@
 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 px-3 sm:px-6 py-4 pb-20" id="loans-list-container"></div>
 <div class="hidden bg-white rounded-xl shadow-sm border border-slate-200 p-6 text-center text-slate-500 w-full mt-3 mx-3 sm:mx-6 w-[calc(100%-24px)] sm:w-[calc(100%-48px)]" id="empty-loans">
 <p class="uppercase text-xs font-bold tracking-widest">SIN PRÉSTAMOS ACTIVOS.</p>
-</div>
-</section>
-<!-- BLOQUE UNIFICADO: RECIBIDOS -->
-<section class="max-w-6xl mx-auto hidden w-full px-3 sm:px-6 py-4 pb-20" id="view-received">
-<div class="view-return-row"><button class="view-back-btn" onclick="switchView('consumibles-menu')"><i data-lucide="arrow-left"></i> Volver a consumibles</button></div>
-<div class="mb-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-<h2 class="text-lg sm:text-xl font-bold text-slate-800 leading-tight uppercase">Recibidos del Día</h2>
-<div class="flex items-center bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
-<button class="px-3 py-2 text-slate-500 hover:bg-slate-50 hover:text-slate-800 transition" onclick="changeReceivedDate(-1)"><i class="w-4 h-4" data-lucide="chevron-left"></i></button>
-<span class="px-4 py-2 text-xs font-black text-slate-800 uppercase min-w-[100px] text-center" id="received-date-display">HOY</span>
-<button class="px-3 py-2 text-slate-500 hover:bg-slate-50 hover:text-slate-800 transition" onclick="changeReceivedDate(1)"><i class="w-4 h-4" data-lucide="chevron-right"></i></button>
-</div>
-</div>
-<div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-<div class="overflow-x-auto">
-<table class="w-full text-left text-[11px] border-collapse">
-<thead>
-<tr class="bg-slate-50 font-black text-slate-400 uppercase tracking-tighter border-b border-slate-200">
-<th class="p-3">FECHA</th>
-<th class="p-3">RECIBE</th>
-<th class="p-3">CONSUMIBLE</th>
-<th class="p-3">USO</th>
-<th class="p-3">RESPONSABLE</th>
-<th class="p-3 text-center w-[120px]">ENTREGA</th>
-<th class="p-3 text-right admin-only w-[150px]">ACCIONES</th>
-</tr>
-</thead>
-<tbody class="divide-y divide-slate-100 font-bold text-slate-700 uppercase" id="received-table-body"></tbody>
-</table>
-</div>
 </div>
 </section>
 <!-- BLOQUE UNIFICADO: CONSUMIBLES -->
@@ -1725,6 +1693,27 @@
 </div>
 </div>
 </div>
+<!-- EDITAR UN PEDIDO TODAVÍA PENDIENTE -->
+<div id="modal-edit-pending-order" class="fixed inset-0 z-[65] hidden items-center justify-center bg-slate-900/65 backdrop-blur-sm p-3 sm:p-5">
+  <div class="bg-white w-full max-w-xl max-h-[92dvh] rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+    <div class="px-4 py-3 bg-slate-900 text-white flex items-center justify-between gap-2">
+      <div class="min-w-0"><h3 class="font-black uppercase text-sm">Editar pedido pendiente</h3><p id="edit-pending-order-number" class="text-[10px] text-slate-300 font-bold truncate mt-0.5"></p></div>
+      <button type="button" class="rounded-lg hover:bg-white/15 p-1.5" onclick="closePendingOrderEditor()" aria-label="Cerrar edición"><i class="w-4 h-4" data-lucide="x"></i></button>
+    </div>
+    <form id="form-edit-pending-order" class="p-4 flex-1 overflow-y-auto space-y-3" onsubmit="savePendingOrderEdit(event)">
+      <div><label class="block mb-1 text-[10px] font-black uppercase text-slate-600">Persona que recibe *</label><input id="edit-pending-receiver" required maxlength="150" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs font-semibold outline-none focus:ring-2 focus:ring-indigo-500"/></div>
+      <div><label class="block mb-1 text-[10px] font-black uppercase text-slate-600">Para uso en *</label><textarea id="edit-pending-use" required rows="2" maxlength="2000" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs font-semibold outline-none focus:ring-2 focus:ring-indigo-500"></textarea></div>
+      <div class="border-t pt-3 border-slate-100"><div class="flex justify-between items-center gap-2 mb-2"><h4 class="font-black uppercase text-slate-800 text-[11px]">Artículos y cantidades</h4><span class="font-bold text-[10px] text-slate-400">Stock verificado al guardar</span></div><div id="edit-pending-items" class="space-y-2"></div></div>
+      <div class="pt-3 border-t border-slate-100 relative">
+        <label for="edit-pending-search" class="block mb-1 font-black text-[10px] uppercase text-slate-600">Agregar artículo</label>
+        <input id="edit-pending-search" type="search" oninput="searchPendingOrderProducts()" autocomplete="off" placeholder="BUSCAR PRODUCTO..." class="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs outline-none focus:ring-2 focus:ring-indigo-500"/>
+        <div id="edit-pending-search-results" class="hidden mt-1 max-h-44 overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg"></div>
+      </div>
+      <p class="text-[10px] text-slate-500">Solo se pueden modificar pedidos pendientes. Los cambios de cantidades se reflejarán automáticamente en el inventario.</p>
+      <div class="flex gap-2 pt-3 border-t border-slate-100"><button type="button" onclick="closePendingOrderEditor()" class="px-4 py-2 border rounded-xl text-xs font-bold text-slate-600">Cancelar</button><button id="btn-save-pending-order" type="submit" class="flex-1 bg-indigo-600 text-white rounded-xl py-2.5 font-black uppercase text-xs hover:bg-indigo-700">Guardar cambios</button></div>
+    </form>
+  </div>
+</div>
 <!-- Confirmar Acción -->
 <div class="fixed inset-0 bg-slate-900/50 hidden items-center justify-center z-50 backdrop-blur-sm p-4 text-xs" id="modal-confirm">
 <div class="bg-white rounded-xl shadow-xl w-full max-w-xs modal-enter flex flex-col border border-slate-200">
@@ -1767,6 +1756,11 @@
         let currentUserId = null;
         let loadingMyOrders = false;
         let loadingAdminOrders = false;
+        let editingPendingOrderId = null;
+        let editingPendingOrderOriginal = [];
+        let editPendingOrderItems = [];
+        let editPendingOrderSearchTimer = null;
+        let pendingOrderBusy = false;
 
         document.addEventListener('DOMContentLoaded', () => {
             lucide.createIcons();
@@ -1899,7 +1893,7 @@
             if (cached) {
                 inventory = cached.inventory || []; loans = cached.loans || []; articulosVenta = cached.articulosVenta || []; entradasVenta = cached.entradasVenta || []; salidasVenta = cached.salidasVenta || []; systemUsers = cached.systemUsers || [];
                 // El rol del caché no concede permisos: esperar confirmación de Supabase.
-                updateStats(); updateApplicantDatalists(); renderInventory(); renderLoans(); renderSalesCatalog(); renderUsers(); renderReports(); renderReceived();
+                updateStats(); updateApplicantDatalists(); renderInventory(); renderLoans(); renderSalesCatalog(); renderUsers(); renderReports();
             }
             
             fetchInitialData();
@@ -1992,7 +1986,7 @@
                 if (!latestLoanTimestamp) {
                     // Primera vez o caché vacío: Descargar todo
                     supabaseClient.from('registro_prestamos').select('*').order('created_at', { ascending: false }).then(({data, error}) => {
-                        if(!error) { loans = (data || []).map(r => ({ id: r.id, applicant: r.solicitante, deliverer: r.entregado_por, date: r.fecha, status: r.estado, tools: r.herramientas, timestamp: r.created_at })); updateStats(); updateApplicantDatalists(); renderLoans(); renderReceived(); } checkAllLoaded();
+                        if(!error) { loans = (data || []).map(r => ({ id: r.id, applicant: r.solicitante, deliverer: r.entregado_por, date: r.fecha, status: r.estado, tools: r.herramientas, timestamp: r.created_at })); updateStats(); updateApplicantDatalists(); renderLoans(); } checkAllLoaded();
                     });
                 } else {
                     // Caché existente: Descargar SOLO lo nuevo y revisar si los activos cambiaron
@@ -2030,7 +2024,7 @@
 
                             // Ordenar desde el más nuevo al más antiguo
                             loans.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-                            updateStats(); updateApplicantDatalists(); renderLoans(); renderReceived();
+                            updateStats(); updateApplicantDatalists(); renderLoans();
                         }
                         checkAllLoaded();
                     });
@@ -2180,8 +2174,8 @@
             if (currentUserRole === 'supervisor' && !['supervisor-output', 'my-orders'].includes(view)) view = 'supervisor-output';
             if (currentUserRole !== 'admin' && view === 'admin-orders') view = 'home';
             if (currentUserRole !== 'supervisor' && ['supervisor-output','my-orders'].includes(view)) view = 'home';
-            const allViews = ['home', 'tools-menu', 'consumibles-menu', 'users-menu', 'inventory', 'loans', 'sales', 'reports', 'users', 'received', 'supervisor-output', 'my-orders', 'admin-orders'];
-            const operationViews = ['home', 'tools-menu', 'consumibles-menu', 'users-menu', 'inventory', 'loans', 'sales', 'received', 'supervisor-output', 'my-orders', 'admin-orders'];
+            const allViews = ['home', 'tools-menu', 'consumibles-menu', 'users-menu', 'inventory', 'loans', 'sales', 'reports', 'users', 'supervisor-output', 'my-orders', 'admin-orders'];
+            const operationViews = ['home', 'tools-menu', 'consumibles-menu', 'users-menu', 'inventory', 'loans', 'sales', 'supervisor-output', 'my-orders', 'admin-orders'];
             const menuChildViews = ['tools-menu', 'consumibles-menu', 'users-menu'];
             const mainContent = document.getElementById('main-content');
 
@@ -2204,7 +2198,6 @@
 
             if(view === 'sales' && hasSearchedSales) refreshVisibleSalesStock();
             if(view === 'reports') renderReports();
-            if(view === 'received') { receivedDateOffset = 0; renderReceived(); }
             if(view === 'my-orders') loadMyOrders();
             if(view === 'admin-orders') loadAdminPendingOrders();
             applyRoleRestrictions();
@@ -2473,6 +2466,11 @@
             const button = canConfirm && pending
                 ? `<button type="button" onclick="confirmOrderDelivered('${escapeOrderHTML(group.id)}')" class="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs px-4 py-2.5 rounded-xl uppercase">Confirmar entrega completa</button>`
                 : '';
+            const canManage = pending && (currentUserRole === 'admin' || currentUserRole === 'supervisor');
+            const manageButtons = canManage ? `<div class="mt-3 pt-3 border-t border-slate-100 flex flex-wrap gap-2 justify-end">
+                <button type="button" onclick="editPendingOrder('${escapeOrderHTML(group.id)}')" class="inline-flex items-center gap-1.5 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-lg px-3 py-2 text-[10px] font-black uppercase hover:bg-indigo-100"><i class="w-3.5 h-3.5" data-lucide="pencil"></i> Editar pedido</button>
+                <button type="button" onclick="confirmDeletePendingOrder('${escapeOrderHTML(group.id)}')" class="inline-flex items-center gap-1.5 bg-red-50 text-red-700 border border-red-200 rounded-lg px-3 py-2 text-[10px] font-black uppercase hover:bg-red-100"><i class="w-3.5 h-3.5" data-lucide="trash-2"></i> Eliminar pedido</button>
+            </div>` : '';
             const delivered = !pending && order.entregado_en
                 ? `<div class="order-card-label mt-2">Entregado: ${escapeOrderHTML(orderDateTime(order.entregado_en))} · ${escapeOrderHTML(order.entregado_por || 'ADMIN')}</div>` : '';
             return `<article class="order-card">
@@ -2491,7 +2489,195 @@
                         <span class="font-black text-slate-900 shrink-0">x${Number(item.cantidad) || 0}</span>
                     </div>`;
                 }).join('')}</div>
-                <p class="mt-3 text-[10px] text-slate-500 uppercase font-semibold">Uso: ${escapeOrderHTML(order.para_uso_en || '-')}</p>${delivered}${button ? `<div class="mt-3 pt-3 border-t border-slate-100 flex justify-end">${button}</div>` : ''}</div></article>`;
+                <p class="mt-3 text-[10px] text-slate-500 uppercase font-semibold">Uso: ${escapeOrderHTML(order.para_uso_en || '-')}</p>${delivered}${manageButtons}${button ? `<div class="mt-3 pt-3 border-t border-slate-100 flex justify-end">${button}</div>` : ''}</div></article>`;
+        }
+
+        // Edición/cancelación de pedidos pendiente: la transacción SQL ajusta el stock
+        // y evita que se edite un pedido que otro usuario ya entregó.
+        function getPendingOrderRows(id) {
+            return [...myOrdersRows, ...adminPendingRows].filter(row => row.pedido_id === id);
+        }
+
+        async function editPendingOrder(pedidoId) {
+            if (!['supervisor','admin'].includes(currentUserRole) || !pedidoId || pendingOrderBusy) return;
+            try {
+                const { data:{ user }, error: userError } = await supabaseClient.auth.getUser();
+                if (userError || !user) throw userError || Error('Debes iniciar sesión');
+                // No confiar solo en el caché: verificar contra los datos recientes.
+                const { data, error } = await supabaseClient.from('salidas_articulos')
+                    .select('*').eq('pedido_id', pedidoId).order('created_at', {ascending:true});
+                if (error) throw error;
+                if (!data?.length || data.some(row => row.estado_entrega !== 'pendiente'))
+                    throw Error('El pedido ya fue entregado o no existe.');
+                if (currentUserRole === 'supervisor' && data.some(row => row.solicitante_id !== user.id))
+                    throw Error('Solo puedes editar tus propios pedidos.');
+                const ids = [...new Set(data.map(row => row.articulo_id))];
+                const { data: catalog, error: catError } = await supabaseClient.from('articulos_venta')
+                    .select('id,nombre,cantidad,categoria,estante').in('id', ids);
+                if (catError) throw catError;
+                const byId = new Map((catalog || []).map(article => [String(article.id),article]));
+                if (ids.some(id => !byId.has(String(id)))) throw Error('Hay artículos del pedido que ya no existen en el catálogo.');
+                editingPendingOrderId = pedidoId;
+                editingPendingOrderOriginal = data;
+                editPendingOrderItems = data.map(row => {
+                    const article = byId.get(String(row.articulo_id));
+                    return { id:String(article.id), nombre:article.nombre, cantidad:Number(row.cantidad), stock:Number(article.cantidad), categoria:article.categoria, estante:article.estante };
+                });
+                document.getElementById('edit-pending-order-number').textContent = pedidoId;
+                document.getElementById('edit-pending-receiver').value = data[0].recibe || '';
+                document.getElementById('edit-pending-use').value = data[0].para_uso_en || '';
+                document.getElementById('edit-pending-search').value = '';
+                document.getElementById('edit-pending-search-results').classList.add('hidden');
+                renderPendingOrderEditItems();
+                const modal = document.getElementById('modal-edit-pending-order');
+                modal.classList.remove('hidden'); modal.classList.add('flex');
+                if(window.lucide) lucide.createIcons();
+            } catch(err) { console.error('Editar pedido:',err); showToast(err.message || 'NO SE PUDO ABRIR EL PEDIDO','error'); }
+        }
+
+        function closePendingOrderEditor() {
+            if (pendingOrderBusy) return;
+            const modal = document.getElementById('modal-edit-pending-order');
+            modal.classList.add('hidden'); modal.classList.remove('flex');
+            editingPendingOrderId = null;
+            editingPendingOrderOriginal = []; editPendingOrderItems = [];
+        }
+
+        function renderPendingOrderEditItems() {
+            const root = document.getElementById('edit-pending-items');
+            if (!root) return;
+            root.innerHTML = editPendingOrderItems.length ? editPendingOrderItems.map(item => {
+                const original = editingPendingOrderOriginal.filter(row => String(row.articulo_id)===String(item.id))
+                    .reduce((sum,row) => sum+Number(row.cantidad||0),0);
+                const max = item.stock + original;
+                return `<div class="flex flex-col sm:flex-row sm:items-center gap-2 p-2.5 bg-slate-50 border border-slate-200 rounded-xl">
+                    <div class="flex-1 min-w-0"><p class="font-black uppercase text-[11px] text-slate-800 break-words">${escapeOrderHTML(item.nombre)}</p>
+                    <p class="text-[9px] uppercase font-semibold text-slate-500 mt-1">Categoría: ${escapeOrderHTML(item.categoria||'SIN CATEGORÍA')} · Estante: ${escapeOrderHTML(item.estante||'SIN ASIGNAR')}</p>
+                    <p class="text-[9px] font-bold text-indigo-600">Disponible para este pedido: ${Math.max(0,max)}</p></div>
+                    <div class="flex items-center gap-2 shrink-0"><button type="button" class="w-8 h-8 bg-white border rounded-lg font-bold" onclick="adjustPendingOrderItem('${escapeOrderHTML(item.id)}',-1)">−</button>
+                    <span class="min-w-6 text-center font-black text-sm">${item.cantidad}</span>
+                    <button type="button" class="w-8 h-8 bg-white border rounded-lg font-bold" onclick="adjustPendingOrderItem('${escapeOrderHTML(item.id)}',1)">+</button>
+                    <button type="button" class="w-8 h-8 text-red-600 bg-red-50 rounded-lg ml-1" onclick="removePendingOrderItem('${escapeOrderHTML(item.id)}')" aria-label="Quitar artículo"><i class="w-4 h-4 mx-auto" data-lucide="trash-2"></i></button></div></div>`;
+            }).join('') : '<p class="p-4 text-center text-xs text-red-600 bg-red-50 rounded-lg">Agrega al menos un artículo para guardar.</p>';
+            if(window.lucide) lucide.createIcons();
+        }
+
+        function adjustPendingOrderItem(articleId, change) {
+            const item = editPendingOrderItems.find(i => i.id === articleId);
+            if (!item) return;
+            const original = editingPendingOrderOriginal.filter(row => String(row.articulo_id)===articleId)
+                .reduce((sum,row) => sum+Number(row.cantidad||0),0);
+            const next = item.cantidad + change;
+            if (next < 1) return removePendingOrderItem(articleId);
+            if (next > item.stock + original) { showToast('STOCK INSUFICIENTE', 'error'); return; }
+            item.cantidad = next; renderPendingOrderEditItems();
+        }
+
+        function removePendingOrderItem(articleId) {
+            editPendingOrderItems = editPendingOrderItems.filter(i => i.id !== articleId);
+            renderPendingOrderEditItems();
+        }
+
+        function searchPendingOrderProducts() {
+            clearTimeout(editPendingOrderSearchTimer);
+            const input = document.getElementById('edit-pending-search');
+            const results = document.getElementById('edit-pending-search-results');
+            const term = input.value.trim();
+            if (!term) { results.classList.add('hidden'); results.innerHTML = ''; return; }
+            editPendingOrderSearchTimer = setTimeout(async () => {
+                try {
+                    const {data, error} = await supabaseClient.from('articulos_venta')
+                        .select('id,nombre,cantidad,categoria,estante').ilike('nombre',`%${term}%`).order('nombre').limit(20);
+                    if (error) throw error;
+                    if (input.value.trim() !== term || !editingPendingOrderId) return;
+                    const available = (data || []).filter(a => !editPendingOrderItems.some(e => e.id === String(a.id)) && Number(a.cantidad)>0);
+                    // Event listeners en vez de atributos interpolados para IDs de origen externo.
+                    results.replaceChildren();
+                    if (!available.length) results.innerHTML = '<p class="px-3 py-2 text-xs text-slate-500">Sin productos disponibles.</p>';
+                    for (const a of available) {
+                        const button = document.createElement('button');
+                        button.type = 'button';
+                        button.className = 'w-full text-left p-2.5 border-b hover:bg-indigo-50 flex justify-between gap-2';
+                        const name = document.createElement('span'); name.className = 'text-xs font-bold text-slate-800'; name.textContent = a.nombre;
+                        const quantity = document.createElement('span'); quantity.className = 'text-[10px] text-emerald-700 font-black shrink-0'; quantity.textContent = `STOCK: ${a.cantidad}`;
+                        button.append(name,quantity);
+                        button.addEventListener('click', () => {
+                            editPendingOrderItems.push({id:String(a.id),nombre:a.nombre,cantidad:1,stock:Number(a.cantidad),categoria:a.categoria,estante:a.estante});
+                            input.value=''; results.classList.add('hidden'); renderPendingOrderEditItems();
+                        });
+                        results.append(button);
+                    }
+                    results.classList.remove('hidden');
+                } catch(err) { console.error(err); results.innerHTML = '<p class="text-xs text-red-600 p-2">Error al buscar artículos.</p>'; results.classList.remove('hidden'); }
+            },280);
+        }
+
+        async function refreshOrdersAfterMutation(articleIds = []) {
+            // Actualizar solo los artículos afectados, también cuando el catálogo está oculto.
+            const ids = [...new Set(articleIds.filter(Boolean).map(String))];
+            if (ids.length) {
+                const {data,error} = await supabaseClient.from('articulos_venta').select('*').in('id',ids);
+                if (error) console.warn('No se pudo refrescar el stock afectado:',error);
+                else (data || []).forEach(applySalesArticleSnapshot);
+            }
+            // Evitar que Reportes conserve las salidas anteriores del caché.
+            hasGeneratedReport = false;
+            renderReports();
+            if (currentUserRole === 'supervisor') await loadMyOrders(true);
+            if (currentUserRole === 'admin') await loadAdminPendingOrders(true);
+            await refreshVisibleSalesStock();
+        }
+
+        async function savePendingOrderEdit(event) {
+            event.preventDefault();
+            if (!editingPendingOrderId || pendingOrderBusy) return;
+            if (!editPendingOrderItems.length) { showToast('AGREGA AL MENOS UN ARTÍCULO', 'error'); return; }
+            const receiver = document.getElementById('edit-pending-receiver').value.trim().toUpperCase();
+            const use = document.getElementById('edit-pending-use').value.trim().toUpperCase();
+            if (!receiver || !use) { showToast('COMPLETA LOS DATOS DEL PEDIDO','error'); return; }
+            const affectedIds = [...editingPendingOrderOriginal.map(row=>row.articulo_id),...editPendingOrderItems.map(item=>item.id)];
+            pendingOrderBusy = true;
+            const btn = document.getElementById('btn-save-pending-order'); btn.disabled=true; btn.textContent='GUARDANDO...';
+            try {
+                const {error} = await supabaseClient.rpc('taller_guardar_pedido_pendiente', {
+                    p_pedido_id:editingPendingOrderId,p_accion:'editar',p_recibe:receiver,p_uso:use,
+                    p_articulos:editPendingOrderItems.map(i=>({articulo_id:i.id,cantidad:i.cantidad}))
+                });
+                if (error) throw error;
+                pendingOrderBusy=false;
+                closePendingOrderEditor();
+                showToast('PEDIDO ACTUALIZADO Y STOCK AJUSTADO','success');
+                await refreshOrdersAfterMutation(affectedIds);
+            } catch(err) { console.error('Guardar edición:',err); showToast(err.message || 'NO SE PUDO MODIFICAR EL PEDIDO','error'); }
+            finally { pendingOrderBusy=false; btn.disabled=false; btn.textContent='GUARDAR CAMBIOS'; }
+        }
+
+        function confirmDeletePendingOrder(pedidoId) {
+            if (!['admin','supervisor'].includes(currentUserRole) || !pedidoId || pendingOrderBusy) return;
+            const btn = document.getElementById('confirm-action-btn');
+            document.getElementById('confirm-title').textContent='¿Eliminar pedido?';
+            document.getElementById('confirm-desc').textContent=`Se eliminará el pedido ${pedidoId} y se devolverán todas sus unidades al inventario. Esta acción no se puede deshacer.`;
+            btn.textContent='SÍ, ELIMINAR'; btn.disabled=false;
+            btn.className='px-3 py-1.5 text-xs bg-red-600 text-white rounded-lg hover:bg-red-700 font-black shadow-sm w-full uppercase';
+            btn.onclick=()=>deletePendingOrder(pedidoId);
+            openModal('modal-confirm');
+        }
+
+        async function deletePendingOrder(pedidoId) {
+            if (pendingOrderBusy) return;
+            const affectedIds = getPendingOrderRows(pedidoId).map(row=>row.articulo_id);
+            const btn=document.getElementById('confirm-action-btn');
+            pendingOrderBusy=true; btn.disabled=true; btn.textContent='ELIMINANDO...';
+            try {
+                const {error}=await supabaseClient.rpc('taller_guardar_pedido_pendiente', {
+                    p_pedido_id:pedidoId,p_accion:'eliminar',p_recibe:null,p_uso:null,p_articulos:[]
+                });
+                if(error) throw error;
+                closeModal('modal-confirm');
+                showToast('PEDIDO ELIMINADO Y STOCK REINTEGRADO','success');
+                await refreshOrdersAfterMutation(affectedIds);
+            } catch(err) { console.error('Eliminar pedido:',err); showToast(err.message || 'NO SE PUDO ELIMINAR EL PEDIDO','error'); }
+            finally { pendingOrderBusy=false; btn.disabled=false; btn.textContent='SÍ, ELIMINAR'; }
         }
 
         function setupOrderStatusSync() {
@@ -2632,143 +2818,10 @@
                 closeModal('modal-confirm');
                 showToast('PEDIDO VERIFICADO COMO ENTREGADO','success');
                 await loadAdminPendingOrders(true);
-                if (!document.getElementById('view-received')?.classList.contains('hidden')) renderReceived();
             } catch (err) {
                 console.error('Error verificando entrega:',err);
                 showToast('NO SE PUDO CONFIRMAR LA ENTREGA','error');
             } finally { if(btn) { btn.disabled = false; btn.textContent = 'SÍ, ENTREGADO'; } }
-        }
-
-        let receivedDateOffset = 0;
-        const VIRTUAL_DELIVERED_OUTPUTS_KEY = 'inventario_taller_salidas_entregadas_virtuales_v1';
-
-        function getVirtualDeliveredOutputIds() {
-            try {
-                const saved = JSON.parse(localStorage.getItem(VIRTUAL_DELIVERED_OUTPUTS_KEY) || '[]');
-                return new Set(Array.isArray(saved) ? saved.map(String) : []);
-            } catch (error) {
-                console.warn('No se pudo leer el estado virtual de entregas:', error);
-                return new Set();
-            }
-        }
-
-        function markSalesOutputDeliveredVirtual(outputId) {
-            const deliveredIds = getVirtualDeliveredOutputIds();
-            deliveredIds.add(String(outputId));
-
-            try {
-                localStorage.setItem(VIRTUAL_DELIVERED_OUTPUTS_KEY, JSON.stringify([...deliveredIds]));
-            } catch (error) {
-                console.warn('No se pudo guardar el estado virtual de entregas:', error);
-            }
-
-            showToast('REGISTRO MARCADO COMO ENTREGADO', 'success');
-            renderReceived();
-        }
-
-        function changeReceivedDate(delta) { receivedDateOffset += delta; renderReceived(); }
-
-        function getSalesDateVariants(date) {
-            const d = String(date.getDate());
-            const m = String(date.getMonth() + 1);
-            const y = String(date.getFullYear());
-            return [...new Set([`${d}/${m}/${y}`, `${d.padStart(2, '0')}/${m.padStart(2, '0')}/${y}`])];
-        }
-
-        function salesDateMatches(value, date) {
-            if (!value) return false;
-            return getSalesDateVariants(date).includes(String(value).trim());
-        }
-
-        async function getConsumableOutputsByDate(date) {
-            const variants = getSalesDateVariants(date);
-            try {
-                const { data, error } = await supabaseClient
-                    .from('salidas_articulos')
-                    .select('*')
-                    .in('fecha', variants)
-                    .order('created_at', { ascending: false });
-
-                if (error) throw error;
-
-                (data || []).forEach(record => {
-                    const idx = salidasVenta.findIndex(x => x.id === record.id);
-                    if (idx !== -1) salidasVenta[idx] = record;
-                    else salidasVenta.unshift(record);
-                });
-
-                saveLocalData();
-                return data || [];
-            } catch (err) {
-                console.error('Error cargando salidas del día:', err);
-                return salidasVenta.filter(s => salesDateMatches(s.fecha, date));
-            }
-        }
-
-        async function renderReceived() {
-            const tbody = document.getElementById('received-table-body');
-            if(!tbody) return;
-
-            const isAdmin = String(currentUserRole || '').toLowerCase() === 'admin';
-            const colspan = isAdmin ? 7 : 6;
-            
-            const targetDate = new Date();
-            targetDate.setDate(targetDate.getDate() + receivedDateOffset);
-            const targetDateStr = getSalesDateVariants(targetDate)[1];
-
-            const displayEl = document.getElementById('received-date-display');
-            if (displayEl) {
-                if (receivedDateOffset === 0) displayEl.innerText = 'HOY';
-                else if (receivedDateOffset === -1) displayEl.innerText = 'AYER';
-                else displayEl.innerText = targetDateStr;
-            }
-
-            tbody.innerHTML = `<tr><td colspan="${colspan}" class="p-10 text-center text-slate-400 font-bold uppercase tracking-widest text-[9px]">CARGANDO SALIDAS DE CONSUMIBLES...</td></tr>`;
-
-            const deliveredIds = getVirtualDeliveredOutputIds();
-            const outputsForDate = await getConsumableOutputsByDate(targetDate);
-            const filtered = outputsForDate.filter(record => record.pedido_id || !deliveredIds.has(String(record.id)));
-
-            if (filtered.length === 0) {
-                const emptyMessage = outputsForDate.length > 0
-                    ? 'TODOS LOS REGISTROS DE ESTA FECHA FUERON MARCADOS COMO ENTREGADOS EN ESTE DISPOSITIVO.'
-                    : `NO HAY SALIDAS DE CONSUMIBLES EL ${receivedDateOffset === 0 ? 'DÍA DE HOY' : targetDateStr}.`;
-                tbody.innerHTML = `<tr><td colspan="${colspan}" class="p-10 text-center text-slate-400 font-bold uppercase tracking-widest text-[9px]">${emptyMessage}</td></tr>`;
-                return;
-            }
-
-            tbody.innerHTML = filtered.map(s => {
-                const actionTd = isAdmin ? `
-                    <td class="p-3 text-right whitespace-nowrap">
-                        <div class="flex justify-end gap-2">
-                            <button onclick="editSalesOutput('${s.id}')" class="inline-flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-100 hover:bg-indigo-100 transition text-[9px] font-black uppercase" title="Editar salida">
-                                <i data-lucide="pencil" class="w-3.5 h-3.5"></i> Editar
-                            </button>
-                            <button onclick="confirmDeletion('${s.id}', 'salesOutput')" class="inline-flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg bg-red-50 text-red-700 border border-red-100 hover:bg-red-100 transition text-[9px] font-black uppercase" title="Eliminar salida">
-                                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> Eliminar
-                            </button>
-                        </div>
-                    </td>` : '';
-                return `
-                <tr class="hover:bg-slate-50 transition border-b border-slate-100">
-                    <td class="p-3 whitespace-nowrap text-slate-500">${s.fecha || targetDateStr}</td>
-                    <td class="p-3 font-black">${s.recibe || 'N/A'}</td>
-                    <td class="p-3 text-[10px]">
-                        <div class="bg-orange-50 p-1.5 rounded border border-orange-100 font-black text-slate-800">${s.nombre_articulo || 'SIN ARTÍCULO'} <span class="text-orange-600 font-black tracking-widest text-[8px]">(CANT: ${s.cantidad || 0})</span></div>
-                    </td>
-                    <td class="p-3 text-[10px] text-slate-600 font-bold">${s.para_uso_en || 'N/A'}</td>
-                    <td class="p-3 text-[10px] text-slate-500 font-black">${s.supervisor || 'N/A'}</td>
-                    <td class="p-3 text-center whitespace-nowrap">
-                        ${s.pedido_id ? (s.estado_entrega === 'entregado'
-                            ? '<span class="order-state-pill order-delivered-pill">ENTREGADO</span>'
-                            : (isAdmin ? `<button onclick="confirmOrderDelivered('${s.pedido_id}')" class="bg-emerald-600 text-white px-3 py-1.5 rounded-lg font-black text-[9px] uppercase hover:bg-emerald-700">Verificar pedido</button>` : '<span class="order-state-pill order-pending-pill">PENDIENTE</span>'))
-                            : `<button onclick="markSalesOutputDeliveredVirtual('${s.id}')" class="inline-flex items-center justify-center gap-1 px-3 py-1.5 rounded-lg bg-slate-200 text-slate-700 text-[9px] font-black uppercase" title="Ocultar registro antiguo en este dispositivo">Ocultar</button>`}
-                    </td>
-                    ${actionTd}
-                </tr>
-                `;
-            }).join('');
-            lucide.createIcons();
         }
 
         // Las categorías son sugerencias, no una lista cerrada. Incluye las nuevas guardadas.
@@ -3173,7 +3226,7 @@
                     const stockError = stockResults.find(result => result.error);
                     if (stockError) throw stockError.error;
                 }
-                renderReports(); renderSalesCatalog(); renderReceived();
+                renderReports(); renderSalesCatalog();
                 showToast(currentUserRole === 'supervisor' ? 'PEDIDO REGISTRADO: PENDIENTE DE ENTREGA' : 'SALIDA REGISTRADA');
                 closeModal('modal-sales-output');
                 if(currentUserRole === 'supervisor' && !currentEditingSalesOutputId) switchView('my-orders');
@@ -3474,7 +3527,7 @@
         function openModal(id) {
             if (currentUserRole === 'supervisor') {
                 if (id === 'modal-sales-output') { switchView('supervisor-output'); return; }
-                return;
+                if (id !== 'modal-confirm') return;
             }
             const el = document.getElementById(id); el.classList.remove('hidden'); el.classList.add('flex'); 
             if(id==='modal-sales-item') refreshConsumableCategorySuggestions();
