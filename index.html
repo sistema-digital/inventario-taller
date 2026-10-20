@@ -935,6 +935,10 @@
         .order-card { background:white; border:1px solid #e2e8f0; border-radius:1.1rem; overflow:hidden; box-shadow:0 5px 20px rgba(15,23,42,.045); }
         .order-card-label { color:#64748b; font-size:10px; font-weight:850; text-transform:uppercase; }
         @media (max-width:640px) { .orders-header-actions { width:100%; } .orders-header-actions button { flex:1; } }
+        /* Reporte: expandir destinatarios tocando el artículo. */
+        #view-reports .report-material-details > summary::-webkit-details-marker { display: none; }
+        #view-reports .report-material-details[open] > summary .material-chevron { transform: rotate(180deg); }
+        #view-reports .report-material-details .material-chevron { transition: transform .15s ease; }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 font-sans h-screen flex flex-col overflow-hidden text-sm">
@@ -1158,6 +1162,9 @@
 <button class="admin-only menu-action-tile bg-amber-50 text-amber-900 border border-amber-200 px-4 py-4 rounded-2xl hover:bg-amber-100 transition shadow-sm flex flex-col items-start justify-center gap-2 text-left" onclick="switchView('admin-orders')">
 <i class="w-5 h-5" data-lucide="clipboard-check"></i><span class="text-xs font-black uppercase tracking-widest">Pedidos pendientes</span><span class="text-[10px] text-amber-800/80 font-bold uppercase">Verificar entrega de supervisores</span>
 </button>
+<button class="admin-only menu-action-tile bg-white text-blue-700 border border-blue-200 px-4 py-4 rounded-2xl hover:bg-blue-50 transition shadow-sm flex flex-col items-start justify-center gap-2 text-left" onclick="switchView('reports')">
+<i class="w-5 h-5" data-lucide="bar-chart-3"></i><span class="text-xs font-black uppercase tracking-widest">Reporte de pedidos</span><span class="text-[10px] text-blue-700/70 font-bold uppercase">Solicitantes, últimos pedidos y artículos más solicitados</span>
+</button>
 <button class="admin-only menu-action-tile bg-white text-indigo-700 border border-indigo-200 px-4 py-4 rounded-2xl hover:bg-indigo-50 transition shadow-sm flex flex-col items-start justify-center gap-2 text-left" onclick="openModal('modal-sales-item')">
 <i class="w-5 h-5" data-lucide="plus"></i><span class="text-xs font-black uppercase tracking-widest">Nuevo artículo</span><span class="text-[10px] text-indigo-700/70 font-bold uppercase">Crear artículo base</span>
 </button>
@@ -1318,61 +1325,128 @@
 </div>
 </section>
 <!-- VISTA: Reportes -->
-<section class="max-w-6xl mx-auto hidden w-full px-3 sm:px-6 py-4 pb-20" id="view-reports">
+<section class="max-w-4xl mx-auto hidden w-full px-3 sm:px-6 py-4 pb-20" id="view-reports">
 <div class="view-return-row"><button class="view-back-btn" onclick="switchView('consumibles-menu')"><i data-lucide="arrow-left"></i> Volver a consumibles</button></div>
-<div class="mb-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-<div>
-<h2 class="text-lg sm:text-xl font-black text-slate-900 tracking-tight uppercase leading-none">Reportes</h2>
-</div>
-<div class="flex flex-wrap gap-2 w-full sm:w-auto">
-<select class="admin-only flex-1 sm:flex-none px-2 py-1.5 border border-slate-300 rounded-lg bg-white text-[10px] font-bold uppercase shadow-sm outline-none focus:ring-2 focus:ring-indigo-500" id="filter-user" onchange="renderReports()">
-<option value="">TODOS LOS USUARIOS</option>
-</select>
-<select class="flex-1 sm:flex-none px-2 py-1.5 border border-slate-300 rounded-lg bg-white text-[10px] font-bold uppercase shadow-sm outline-none focus:ring-2 focus:ring-indigo-500" id="filter-day" onchange="renderReports()">
-<option value="all">TODOS</option>
-</select>
-<select class="flex-1 sm:flex-none px-2 py-1.5 border border-slate-300 rounded-lg bg-white text-[10px] font-bold uppercase shadow-sm outline-none focus:ring-2 focus:ring-indigo-500" id="filter-month" onchange="renderReports()">
-<option value="01">Enero</option><option value="02">Febrero</option><option value="03">Marzo</option><option value="04">Abril</option>
-<option value="05">Mayo</option><option value="06">Junio</option><option value="07">Julio</option><option value="08">Agosto</option>
-<option value="09">Septiembre</option><option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option>
-</select>
-<select class="flex-1 sm:flex-none px-2 py-1.5 border border-slate-300 rounded-lg bg-white text-[10px] font-bold uppercase shadow-sm outline-none focus:ring-2 focus:ring-indigo-500" id="filter-year" onchange="renderReports()">
-</select>
-<button class="bg-indigo-600 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-700 transition shadow-sm font-black uppercase text-xs flex items-center justify-center gap-1 shrink-0" id="btn-generate-report" onclick="generateReportDB()">
-<i class="w-3.5 h-3.5" data-lucide="play"></i> GENERAR REPORTE
-                        </button>
-</div>
-</div>
-<div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-<div class="bg-white p-3 rounded-xl shadow-sm border border-indigo-100 flex flex-col items-center">
-<span class="text-[8px] font-black text-slate-400 uppercase tracking-tighter mb-1 text-center">PEDIDOS</span>
-<span class="text-lg font-black text-indigo-600" id="rep-stat-total">0</span>
-</div>
-<div class="bg-white p-3 rounded-xl shadow-sm border border-emerald-100 flex flex-col items-center">
-<span class="text-[8px] font-black text-slate-400 uppercase tracking-tighter mb-1 text-center">UNIDADES</span>
-<span class="text-lg font-black text-emerald-600" id="rep-stat-units">0</span>
-</div>
-<div class="bg-white p-3 rounded-xl shadow-sm border border-slate-100 flex flex-col items-center col-span-2">
-<span class="text-[8px] font-black text-slate-400 uppercase tracking-tighter mb-1 text-center">TOP ARTÍCULO</span>
-<span class="text-[10px] font-black text-slate-800 uppercase truncate max-w-full" id="rep-stat-top">SIN DATOS</span>
-</div>
-</div>
-<div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-<div class="overflow-x-auto">
-<table class="w-full text-left text-[11px] border-collapse">
-<thead>
-<tr class="bg-slate-50 font-black text-slate-400 uppercase tracking-tighter border-b border-slate-200">
-<th class="p-3">FECHA</th>
-<th class="p-3">ARTÍCULO</th>
-<th class="p-3 text-center">CANT</th>
-<th class="p-3">RECIBE</th>
-<th class="p-3">SUPERVISOR</th>
-<th class="p-3 text-right admin-only w-16"></th>
-</tr>
-</thead>
-<tbody class="divide-y divide-slate-100 font-bold text-slate-700 uppercase" id="reports-table-body"></tbody>
-</table>
-</div>
+
+<div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+  <div class="bg-slate-900 text-white px-4 py-4 sm:px-5">
+    <div class="flex items-start justify-between gap-3">
+      <div>
+        <h2 class="text-2xl font-black uppercase leading-none">Reporte de pedidos</h2>
+        <p class="text-slate-300 text-sm mt-1">Resumen útil por mes y año.</p>
+      </div>
+      <div class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center shrink-0"><i data-lucide="bar-chart-3" class="w-5 h-5"></i></div>
+    </div>
+  </div>
+
+  <div class="p-4 sm:p-5 space-y-4">
+    <div class="grid grid-cols-2 sm:grid-cols-[1fr_1fr_auto] gap-3 items-end">
+      <div>
+        <label class="block text-[10px] font-black text-slate-500 uppercase mb-1">Mes</label>
+        <select class="w-full px-3 py-2.5 border border-slate-300 rounded-xl bg-white text-sm font-bold outline-none focus:ring-2 focus:ring-indigo-500" id="filter-month" onchange="renderReports()">
+          <option value="01">Enero</option><option value="02">Febrero</option><option value="03">Marzo</option><option value="04">Abril</option>
+          <option value="05">Mayo</option><option value="06">Junio</option><option value="07">Julio</option><option value="08">Agosto</option>
+          <option value="09">Septiembre</option><option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-[10px] font-black text-slate-500 uppercase mb-1">Año</label>
+        <select class="w-full px-3 py-2.5 border border-slate-300 rounded-xl bg-white text-sm font-bold outline-none focus:ring-2 focus:ring-indigo-500" id="filter-year" onchange="renderReports()"></select>
+      </div>
+      <button class="col-span-2 sm:col-span-1 w-full sm:w-auto bg-indigo-600 text-white px-4 py-2.5 rounded-xl hover:bg-indigo-700 transition shadow-sm font-black uppercase text-xs flex items-center justify-center gap-2" id="btn-generate-report" onclick="generateReportDB()">
+        <i class="w-4 h-4" data-lucide="search"></i> Ver reporte
+      </button>
+    </div>
+
+    <!-- Filtro adicional propio de esta vista: no altera el catálogo ni las salidas. -->
+    <div>
+      <label for="reports-product-search" class="block text-[10px] font-black text-slate-500 uppercase mb-1">Buscar por producto</label>
+      <div class="relative z-30" id="reports-product-search-wrapper">
+        <div class="relative">
+          <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none"></i>
+          <input id="reports-product-search" type="search" autocomplete="off" placeholder="NOMBRE O CÓDIGO DEL PRODUCTO..."
+            oninput="handleReportProductInput()" onfocus="showReportProductSuggestions()" onkeydown="handleReportProductKeydown(event)"
+            role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="reports-product-results"
+            class="w-full pl-10 pr-10 py-2.5 border border-slate-300 bg-slate-50 rounded-xl text-xs font-bold uppercase outline-none focus:ring-2 focus:ring-indigo-500"
+            aria-label="Buscar y seleccionar un producto para el reporte" />
+          <button type="button" onclick="clearReportProductFilter()" title="Limpiar filtro de producto" aria-label="Limpiar filtro de producto"
+            class="absolute inset-y-0 right-0 px-3 text-slate-400 hover:text-indigo-700 flex items-center justify-center">
+            <i data-lucide="x" class="w-4 h-4"></i>
+          </button>
+        </div>
+        <div id="reports-product-results" role="listbox" aria-label="Productos encontrados"
+          class="hidden absolute left-0 right-0 top-full mt-1 rounded-xl border border-slate-200 bg-white shadow-xl z-50 max-h-64 overflow-y-auto overscroll-contain"></div>
+      </div>
+      <p class="text-[10px] text-slate-500 mt-1" id="reports-product-status" role="status">Filtra los pedidos, las cuentas y las cantidades por material.</p>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div class="rounded-2xl border border-blue-100 bg-blue-50/60 p-4">
+        <div class="flex items-center gap-3 mb-2">
+          <div class="w-11 h-11 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center shrink-0"><i data-lucide="users" class="w-5 h-5"></i></div>
+          <div>
+            <p class="text-[10px] font-black uppercase text-slate-500 leading-none">Personas que pidieron</p>
+            <p class="text-3xl font-black text-slate-900 mt-1" id="rep-stat-people">0</p>
+          </div>
+        </div>
+      </div>
+      <div class="rounded-2xl border border-emerald-100 bg-emerald-50/70 p-4">
+        <div class="flex items-center gap-3 mb-2">
+          <div class="w-11 h-11 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0"><i data-lucide="clipboard-list" class="w-5 h-5"></i></div>
+          <div>
+            <p class="text-[10px] font-black uppercase text-slate-500 leading-none">Total pedidos</p>
+            <p class="text-3xl font-black text-slate-900 mt-1" id="rep-stat-total">0</p>
+          </div>
+        </div>
+      </div>
+      <div class="rounded-2xl border border-amber-100 bg-amber-50/70 p-4">
+        <div class="flex items-center gap-3 mb-2">
+          <div class="w-11 h-11 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center shrink-0"><i data-lucide="package-search" class="w-5 h-5"></i></div>
+          <div class="min-w-0">
+            <p class="text-[10px] font-black uppercase text-slate-500 leading-none">Item más pedido</p>
+            <p class="text-base font-black text-slate-900 mt-1 uppercase truncate" id="rep-stat-top">Sin datos</p>
+            <p class="text-sm font-bold text-slate-500" id="rep-stat-top-units">0 unidades</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="rounded-2xl border border-slate-200 overflow-hidden">
+      <div class="flex items-center justify-between gap-2 px-4 py-3 border-b border-slate-100 bg-slate-50/80">
+        <div>
+          <h3 class="font-black uppercase text-slate-900 text-base flex items-center gap-2"><i data-lucide="users-2" class="w-4 h-4 text-blue-600"></i> Cuentas que solicitaron</h3>
+          <p class="text-xs text-slate-500 mt-0.5">Toca una cuenta para ver su historial del mes y a quién entregó.</p>
+        </div>
+      </div>
+      <div class="px-3 py-2 border-b border-slate-100">
+        <div class="relative">
+          <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none"></i>
+          <input id="reports-account-search" type="search" placeholder="BUSCAR CUENTA..." oninput="renderReports()" class="w-full pl-9 pr-3 py-2 text-xs border border-slate-200 bg-slate-50 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 uppercase" aria-label="Buscar cuenta solicitante">
+        </div>
+      </div>
+      <div class="divide-y divide-slate-100" id="reports-top-requesters"></div>
+    </div>
+
+    <div class="rounded-2xl border border-slate-200 overflow-hidden">
+      <div class="flex items-center justify-between gap-2 px-4 py-3 border-b border-slate-100 bg-slate-50/80">
+        <div>
+          <h3 class="font-black uppercase text-slate-900 text-base flex items-center gap-2"><i data-lucide="history" class="w-4 h-4 text-indigo-600"></i> Últimos pedidos</h3>
+          <p class="text-xs text-slate-500 mt-0.5">Pedidos más recientes registrados en el período.</p>
+        </div>
+      </div>
+      <div class="divide-y divide-slate-100" id="reports-recent-orders"></div>
+    </div>
+
+    <div class="rounded-2xl border border-slate-200 overflow-hidden">
+      <div class="flex items-center justify-between gap-2 px-4 py-3 border-b border-slate-100 bg-slate-50/80">
+        <div>
+          <h3 class="font-black uppercase text-slate-900 text-base flex items-center gap-2"><i data-lucide="award" class="w-4 h-4 text-amber-600"></i> Items más pedidos</h3>
+          <p class="text-xs text-slate-500 mt-0.5">Artículos con mayor cantidad solicitada.</p>
+        </div>
+      </div>
+      <div class="divide-y divide-slate-100" id="reports-top-items"></div>
+    </div>
+  </div>
 </div>
 </section>
 <!-- VISTA: USUARIOS -->
@@ -1638,8 +1712,11 @@
 </div>
 <div>
 <label class="block font-bold text-slate-700 mb-1 uppercase text-[10px]">NOMBRE DEL QUE RECIBE *</label>
-<input class="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none transition bg-slate-50 font-bold uppercase text-xs" id="sales-out-recibe" list="receptores-consumibles" placeholder="ESCRIBIR..." required="" type="text"/>
-<datalist id="receptores-consumibles"></datalist>
+<div class="relative">
+<input class="w-full px-3 pr-11 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none transition bg-white font-bold uppercase text-xs cursor-pointer" id="sales-out-recibe" placeholder="TOCA PARA ELEGIR O AGREGAR..." required readonly autocomplete="off" type="text" onclick="openReceiverPicker('sales-out-recibe')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openReceiverPicker('sales-out-recibe')}" aria-label="Seleccionar destinatario de la lista de la aplicación"/>
+<button type="button" onclick="openReceiverPicker('sales-out-recibe')" class="absolute right-1 top-1 bottom-1 w-9 flex items-center justify-center text-orange-600 bg-orange-50 rounded-lg" title="Abrir lista de destinatarios"><i class="w-4 h-4" data-lucide="users"></i></button>
+</div>
+<p class="text-[9px] text-slate-500 mt-1">Lista de la aplicación basada en pedidos anteriores. Puedes agregar un nombre nuevo.</p>
 </div>
 </div>
 <div class="mt-4 pt-3 border-t border-slate-100 flex justify-end gap-2 shrink-0">
@@ -1701,7 +1778,7 @@
       <button type="button" class="rounded-lg hover:bg-white/15 p-1.5" onclick="closePendingOrderEditor()" aria-label="Cerrar edición"><i class="w-4 h-4" data-lucide="x"></i></button>
     </div>
     <form id="form-edit-pending-order" class="p-4 flex-1 overflow-y-auto space-y-3" onsubmit="savePendingOrderEdit(event)">
-      <div><label class="block mb-1 text-[10px] font-black uppercase text-slate-600">Persona que recibe *</label><input id="edit-pending-receiver" required maxlength="150" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs font-semibold outline-none focus:ring-2 focus:ring-indigo-500"/></div>
+      <div><label class="block mb-1 text-[10px] font-black uppercase text-slate-600">Persona que recibe *</label><div class="relative"><input id="edit-pending-receiver" required readonly maxlength="150" autocomplete="off" onclick="openReceiverPicker('edit-pending-receiver')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openReceiverPicker('edit-pending-receiver')}" placeholder="TOCA PARA ELEGIR O AGREGAR..." class="w-full pl-3 pr-11 py-2.5 rounded-lg border border-slate-300 text-xs font-semibold outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer bg-white"/><button type="button" onclick="openReceiverPicker('edit-pending-receiver')" class="absolute right-1 top-1 bottom-1 w-9 flex items-center justify-center bg-indigo-50 text-indigo-600 rounded-lg" aria-label="Seleccionar destinatario"><i data-lucide="users" class="w-4 h-4"></i></button></div></div>
       <div><label class="block mb-1 text-[10px] font-black uppercase text-slate-600">Para uso en *</label><textarea id="edit-pending-use" required rows="2" maxlength="2000" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs font-semibold outline-none focus:ring-2 focus:ring-indigo-500"></textarea></div>
       <div class="border-t pt-3 border-slate-100"><div class="flex justify-between items-center gap-2 mb-2"><h4 class="font-black uppercase text-slate-800 text-[11px]">Artículos y cantidades</h4><span class="font-bold text-[10px] text-slate-400">Stock verificado al guardar</span></div><div id="edit-pending-items" class="space-y-2"></div></div>
       <div class="pt-3 border-t border-slate-100 relative">
@@ -1732,6 +1809,28 @@
 <div class="fixed inset-0 bg-black/90 hidden items-center justify-center z-[70] backdrop-blur-md p-4" id="modal-image-viewer" onclick="closeImageViewer()">
 <button class="absolute top-4 right-4 text-white/60 hover:text-white p-2" onclick="closeImageViewer()"><i class="w-8 h-8" data-lucide="x"></i></button>
 <img alt="Vista" class="max-w-full max-h-full object-contain rounded-lg shadow-2xl" id="full-screen-image" onclick="event.stopPropagation()" src=""/>
+</div>
+<!-- Selector de destinatarios propio de la aplicación (sin datalist ni autocompletado del navegador) -->
+<div class="fixed inset-0 bg-slate-900/70 hidden items-center justify-center z-[95] backdrop-blur-sm p-3 sm:p-4" id="receiver-picker-modal" role="dialog" aria-modal="true" aria-labelledby="receiver-picker-title">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90dvh] flex flex-col overflow-hidden">
+    <div class="px-4 py-3 flex items-center justify-between gap-3 bg-slate-900 text-white shrink-0">
+      <div class="min-w-0"><h3 class="text-sm font-black uppercase" id="receiver-picker-title">Nombre del que recibe</h3><p class="text-[10px] text-slate-300">Selecciona uno o agrega un destinatario nuevo</p></div>
+      <button type="button" class="p-2 rounded-lg hover:bg-white/10" onclick="closeReceiverPicker()" aria-label="Cerrar selector"><i data-lucide="x" class="w-5 h-5"></i></button>
+    </div>
+    <div class="px-4 pt-4 pb-2 shrink-0">
+      <label for="receiver-picker-search" class="text-[10px] font-black uppercase text-slate-600">Buscar destinatario</label>
+      <div class="relative mt-1">
+        <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none"></i>
+        <input id="receiver-picker-search" type="search" autocomplete="off" autocapitalize="characters" placeholder="ESCRIBE NOMBRE O APELLIDO..." oninput="renderReceiverPickerResults()" onkeydown="if(event.key==='Enter'){event.preventDefault();receiverPickerEnter()}" class="w-full pl-9 pr-3 py-3 border border-slate-300 rounded-xl bg-slate-50 text-sm font-semibold uppercase outline-none focus:ring-2 focus:ring-indigo-500"/>
+      </div>
+      <p class="text-[10px] text-slate-500 mt-2" id="receiver-picker-count">Cargando nombres...</p>
+    </div>
+    <div class="overflow-y-auto overscroll-contain flex-1 min-h-[80px] px-3 pb-2 divide-y divide-slate-100" id="receiver-picker-results" role="listbox"></div>
+    <div class="px-4 py-3 border-t border-slate-200 bg-slate-50 shrink-0 space-y-2">
+      <button type="button" id="receiver-picker-add" onclick="addReceiverFromPicker()" class="w-full bg-emerald-600 text-white py-3 px-3 rounded-xl text-xs font-black uppercase flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"><i data-lucide="user-plus" class="w-4 h-4"></i><span id="receiver-picker-add-label">Agregar nombre nuevo</span></button>
+      <p class="text-[9px] text-slate-500 text-center">Los nombres nuevos quedan disponibles aquí y se comparten al registrar un pedido.</p>
+    </div>
+  </div>
 </div>
 <div class="fixed bottom-4 right-4 flex flex-col gap-2 z-[60] items-end pointer-events-none" id="toast-container"></div>
 <script>
@@ -2074,6 +2173,211 @@
             upd('stat-total-users', systemUsers.length);
         }
         
+        // ==============================================================
+        // DESTINATARIOS: LISTA INTERNA CONSOLIDADA DE SALIDAS ANTERIORES
+        // ==============================================================
+        const RECEIVER_CUSTOM_STORAGE_KEY = 'inventario_taller_destinatarios_manual_v1';
+        let receiverHistoryNames = [];
+        let receiverDirectory = [];
+        let receiverDirectoryMap = new Map();
+        let receiverDirectoryLastLoad = 0;
+        let receiverDirectoryRequest = null;
+        let receiverPickerTargetId = null;
+
+        function normalizeReceiverName(value) {
+            return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+                .toUpperCase().replace(/[^A-ZÑ0-9\s'-]/g, ' ')
+                .replace(/\s+/g, ' ').trim();
+        }
+
+        function validReceiverName(value) {
+            const name = normalizeReceiverName(value);
+            return name.length >= 3 && name.length <= 150 && /[A-Z]/.test(name);
+        }
+
+        // Solo se fusionan diferencias evidentes de una letra con el resto
+        // del nombre idéntico. No se asumen equivalentes personas con apellidos distintos.
+        function receiverOneEditApart(a, b) {
+            if (Math.abs(a.length - b.length) > 1 || a === b) return false;
+            let i = 0, j = 0, edits = 0;
+            while (i < a.length && j < b.length) {
+                if (a[i] === b[j]) { i++; j++; continue; }
+                if (++edits > 1) return false;
+                if (a.length > b.length) i++;
+                else if (b.length > a.length) j++;
+                else { i++; j++; }
+            }
+            return edits + (a.length - i) + (b.length - j) <= 1;
+        }
+
+        function sameReceiverVariant(a, b) {
+            if (a === b) return true;
+            const aa = a.split(' '), bb = b.split(' ');
+            if (aa.length < 2 || bb.length !== aa.length) return false;
+            const diffs = aa.map((word, i) => ({ word, other: bb[i] })).filter(pair => pair.word !== pair.other);
+            if (diffs.length !== 1) return false;
+            if (!aa.some((word, i) => word === bb[i] && word.length >= 3)) return false;
+            return diffs[0].word.length >= 5 && diffs[0].other.length >= 5 &&
+                receiverOneEditApart(diffs[0].word, diffs[0].other);
+        }
+
+        function savedReceiverNames() {
+            try {
+                const names = JSON.parse(localStorage.getItem(RECEIVER_CUSTOM_STORAGE_KEY) || '[]');
+                return Array.isArray(names) ? names.filter(validReceiverName) : [];
+            } catch (_) { return []; }
+        }
+
+        function rebuildReceiverDirectory() {
+            const counts = new Map();
+            [...receiverHistoryNames, ...salidasVenta.map(r => r.recibe), ...savedReceiverNames()].forEach(value => {
+                const name = normalizeReceiverName(value);
+                if (validReceiverName(name)) counts.set(name, (counts.get(name) || 0) + 1);
+            });
+            const names = [...counts.keys()].sort((a,b) => (counts.get(b)-counts.get(a)) || a.localeCompare(b, 'es'));
+            const groups = [];
+            names.forEach(name => {
+                let group = groups.find(g => g.members.some(other => sameReceiverVariant(name, other)));
+                if (!group) { group = { members: [] }; groups.push(group); }
+                group.members.push(name);
+            });
+            receiverDirectoryMap = new Map();
+            receiverDirectory = groups.map(group => {
+                const preferred = [...group.members].sort((a,b) => (counts.get(b)-counts.get(a)) || a.localeCompare(b,'es'))[0];
+                group.members.forEach(name => receiverDirectoryMap.set(name, preferred));
+                return { name: preferred, aliases: group.members };
+            }).sort((a,b) => a.name.localeCompare(b.name,'es'));
+        }
+
+        function canonicalReceiverName(value) {
+            const name = normalizeReceiverName(value);
+            if (!name) return '';
+            const exact = receiverDirectoryMap.get(name);
+            if (exact) return exact;
+            return receiverDirectory.find(entry => entry.aliases.some(other => sameReceiverVariant(name, other)))?.name || name;
+        }
+
+        function rememberReceiverName(value) {
+            const name = canonicalReceiverName(value);
+            if (!validReceiverName(name)) return;
+            const saved = savedReceiverNames();
+            if (!saved.some(existing => normalizeReceiverName(existing) === name)) {
+                saved.push(name);
+                try { localStorage.setItem(RECEIVER_CUSTOM_STORAGE_KEY, JSON.stringify(saved)); }
+                catch (err) { console.warn('No se pudo guardar el nombre localmente:', err); }
+            }
+            rebuildReceiverDirectory();
+        }
+
+        async function ensureReceiverDirectory(force = false) {
+            rebuildReceiverDirectory();
+            if (!force && receiverDirectoryLastLoad && Date.now() - receiverDirectoryLastLoad < 5 * 60 * 1000) return;
+            if (receiverDirectoryRequest) return receiverDirectoryRequest;
+            receiverDirectoryRequest = (async () => {
+                const names = [];
+                const pageSize = 1000;
+                for (let start = 0; ; start += pageSize) {
+                    const { data, error } = await supabaseClient.from('salidas_articulos')
+                        .select('recibe').order('id').range(start, start + pageSize - 1);
+                    if (error) throw error;
+                    (data || []).forEach(row => { if (row.recibe) names.push(row.recibe); });
+                    if (!data || data.length < pageSize) break;
+                }
+                receiverHistoryNames = names;
+                receiverDirectoryLastLoad = Date.now();
+                rebuildReceiverDirectory();
+            })();
+            try { await receiverDirectoryRequest; }
+            catch (err) { console.warn('Directorio: no se pudieron consultar todas las salidas:', err); }
+            finally { receiverDirectoryRequest = null; }
+        }
+
+        async function openReceiverPicker(targetId) {
+            const input = document.getElementById(targetId);
+            const modal = document.getElementById('receiver-picker-modal');
+            if (!input || !modal) return;
+            receiverPickerTargetId = targetId;
+            document.getElementById('receiver-picker-search').value = '';
+            modal.classList.remove('hidden'); modal.classList.add('flex');
+            rebuildReceiverDirectory();
+            renderReceiverPickerResults();
+            if (window.lucide) lucide.createIcons();
+            document.getElementById('receiver-picker-search').focus();
+            await ensureReceiverDirectory();
+            if (receiverPickerTargetId === targetId && !modal.classList.contains('hidden')) renderReceiverPickerResults();
+        }
+
+        function closeReceiverPicker() {
+            const modal = document.getElementById('receiver-picker-modal');
+            modal.classList.add('hidden'); modal.classList.remove('flex');
+            receiverPickerTargetId = null;
+        }
+
+        function chooseReceiverFromPicker(name) {
+            const input = document.getElementById(receiverPickerTargetId);
+            if (!input) return;
+            input.value = canonicalReceiverName(name);
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+            closeReceiverPicker();
+        }
+
+        function renderReceiverPickerResults() {
+            const container = document.getElementById('receiver-picker-results');
+            const search = document.getElementById('receiver-picker-search');
+            const count = document.getElementById('receiver-picker-count');
+            const addButton = document.getElementById('receiver-picker-add');
+            const addLabel = document.getElementById('receiver-picker-add-label');
+            if (!container || !search || !count) return;
+            const term = normalizeReceiverName(search.value);
+            const matches = receiverDirectory.filter(entry => !term || entry.name.includes(term) || entry.aliases.some(alias => alias.includes(term)));
+            const exactOrVariant = term && receiverDirectory.some(entry => entry.aliases.some(alias => sameReceiverVariant(term, alias)));
+            const visible = matches.slice(0, 80);
+            container.replaceChildren();
+            visible.forEach(entry => {
+                const btn = document.createElement('button');
+                btn.type = 'button'; btn.setAttribute('role', 'option');
+                btn.className = 'w-full text-left px-3 py-3 flex items-center gap-3 hover:bg-indigo-50 focus:bg-indigo-50 focus:outline-none';
+                const icon = document.createElement('span');
+                icon.className = 'w-8 h-8 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0';
+                icon.innerHTML = '<i data-lucide="user-round" class="w-4 h-4"></i>';
+                const label = document.createElement('span');
+                label.className = 'text-xs sm:text-sm font-black uppercase text-slate-800 flex-1 break-words';
+                label.textContent = entry.name;
+                btn.append(icon,label);
+                btn.addEventListener('click', () => chooseReceiverFromPicker(entry.name));
+                container.appendChild(btn);
+            });
+            if (!visible.length) {
+                const empty = document.createElement('p');
+                empty.className = 'text-xs text-slate-500 text-center p-5';
+                empty.textContent = term ? 'No se encontró el nombre. Puedes agregarlo abajo.' : 'No hay nombres registrados. Escribe uno para empezar.';
+                container.appendChild(empty);
+            }
+            count.textContent = `${matches.length} nombre(s) de ${receiverDirectory.length} · ${term ? 'Filtra la lista escribiendo' : 'Lista unificada de registros anteriores'}`;
+            addButton.disabled = !validReceiverName(term) || !!exactOrVariant;
+            addLabel.textContent = term ? `Agregar: ${term}` : 'Escribe un nombre para agregar';
+            if (window.lucide) lucide.createIcons();
+        }
+
+        function addReceiverFromPicker() {
+            const search = document.getElementById('receiver-picker-search');
+            const name = normalizeReceiverName(search?.value);
+            if (!validReceiverName(name)) { showToast('ESCRIBE UN NOMBRE VÁLIDO', 'error'); return; }
+            if (receiverDirectory.some(entry => entry.aliases.some(alias => sameReceiverVariant(name, alias)))) {
+                chooseReceiverFromPicker(name);
+                return;
+            }
+            rememberReceiverName(name);
+            chooseReceiverFromPicker(name);
+        }
+
+        function receiverPickerEnter() {
+            const term = normalizeReceiverName(document.getElementById('receiver-picker-search')?.value);
+            const exact = receiverDirectory.find(entry => entry.aliases.some(alias => sameReceiverVariant(term, alias)));
+            if (exact) chooseReceiverFromPicker(exact.name);
+            else addReceiverFromPicker();
+        }
+
         function updateApplicantDatalists() {
             const setList = (id, field) => {
                 const datalist = document.getElementById(id);
@@ -2085,11 +2389,8 @@
             setList('solicitantes', 'applicant');
             setList('entregadores', 'deliverer');
             
-            const datalistSales = document.getElementById('receptores-consumibles');
-            if (datalistSales) {
-                const uniqueRec = [...new Set(salidasVenta.map(s => (s.recibe||'').toUpperCase().trim()))].sort();
-                datalistSales.innerHTML = uniqueRec.filter(name => name).map(name => `<option value="${name}">`).join('');
-            }
+            // Destinatarios: usar el selector interno, no el datalist nativo.
+            rebuildReceiverDirectory();
         }
 
         // ==========================================
@@ -2223,6 +2524,23 @@
                 const { data, error } = await supabaseClient.from('salidas_articulos').select('*').order('created_at', { ascending: false });
                 if(error) throw error;
                 salidasVenta = data || [];
+                rebuildReceiverDirectory();
+
+                // Nombres actuales de las cuentas asociadas al UUID solicitante_id.
+                // La ausencia de algún perfil no impide generar el reporte:
+                // los registros conservan el nombre de cuenta en 'supervisor'.
+                const accountIds = [...new Set(salidasVenta.map(row => row.solicitante_id).filter(Boolean).map(String))];
+                for (let i = 0; i < accountIds.length; i += 150) {
+                    const { data: profiles, error: profilesError } = await supabaseClient
+                        .from('usuarios').select('id, nombre_completo, email')
+                        .in('id', accountIds.slice(i, i + 150));
+                    if (profilesError) {
+                        console.warn('No se pudieron consultar algunos perfiles para el reporte:', profilesError);
+                        break;
+                    }
+                    (profiles || []).forEach(profile => reportAccountProfiles.set(String(profile.id), profile));
+                }
+
                 saveLocalData();
                 updateApplicantDatalists();
                 hasGeneratedReport = true;
@@ -2235,65 +2553,617 @@
             }
         }
 
+        // Identifica la cuenta que REGISTRÓ el pedido; 'recibe' es el destinatario
+        // físico y nunca debe usarse como identidad de la cuenta.
+        const reportAccountProfiles = new Map();
+
+        function normalizeReportAccountKey(value) {
+            return String(value || '')
+                .normalize('NFD').replace(/[̀-ͯ]/g, '')
+                .replace(/[^A-Z0-9@._\s-]/gi, ' ')
+                .replace(/\s+/g, ' ')
+                .trim()
+                .toUpperCase();
+        }
+
+        function resolveReportAccount(row) {
+            const accountId = String(row?.solicitante_id || '').trim();
+            const profile = accountId
+                ? (reportAccountProfiles.get(accountId) || systemUsers.find(user => String(user.id) === accountId))
+                : null;
+            const savedAccountName = String(row?.supervisor || '').trim();
+            const rawName = String(profile?.nombre_completo || savedAccountName || profile?.email || 'CUENTA NO IDENTIFICADA').trim();
+            const displayName = normalizeReportAccountKey(rawName) || 'CUENTA NO IDENTIFICADA';
+            const email = String(profile?.email || '').trim().toLowerCase();
+            const mergeKeyBase = displayName || normalizeReportAccountKey(email) || 'CUENTA NO IDENTIFICADA';
+            return {
+                key: `ACCOUNT:${mergeKeyBase}`,
+                name: displayName,
+                email: email && normalizeReportAccountKey(email) !== displayName ? email : ''
+            };
+        }
+
+        function getReportArticleVisual(row) {
+            const article = articulosVenta.find(item => String(item.id) === String(row?.articulo_id));
+            return {
+                imageUrl: row?.imagen_url || article?.imagen_url || '',
+                category: row?.categoria || article?.categoria || '',
+                shelf: row?.estante || article?.estante || ''
+            };
+        }
+
+        // La fecha real de entrega proviene de entregado_en; en registros
+        // antiguos sin confirmación solo mostramos la fecha de salida.
+        function getReportDeliveryInfo(row, order) {
+            const state = String(row?.estado_entrega || order?.status || '').toLowerCase();
+            const deliveredAt = row?.entregado_en ? new Date(row.entregado_en) : null;
+            const confirmed = state === 'entregado' && deliveredAt && !Number.isNaN(deliveredAt.getTime());
+            if (confirmed) {
+                const date = [
+                    String(deliveredAt.getDate()).padStart(2, '0'),
+                    String(deliveredAt.getMonth() + 1).padStart(2, '0'),
+                    String(deliveredAt.getFullYear())
+                ].join('/');
+                return { date, kind: 'entregado', label: 'Entregado el', stamp: deliveredAt.getTime() };
+            }
+            const recorded = getReportDateMeta(row);
+            const date = String(row?.fecha || order?.fecha || 'SIN FECHA').trim();
+            if (state === 'pendiente') {
+                return { date, kind: 'pendiente', label: 'Solicitado el', stamp: recorded.stamp };
+            }
+            return { date, kind: 'sin_confirmacion', label: 'Fecha de salida', stamp: recorded.stamp };
+        }
+
+        function getReportDateMeta(row) {
+            const raw = String(row?.fecha || '').trim();
+            const parts = raw.split('/');
+            const day = (parts[0] || '01').padStart(2, '0');
+            const month = (parts[1] || '01').padStart(2, '0');
+            const year = parts[2] || String(new Date().getFullYear());
+            let stamp = Date.parse(`${year}-${month}-${day}T00:00:00`);
+            if (Number.isNaN(stamp) && row?.created_at) stamp = Date.parse(row.created_at);
+            if (Number.isNaN(stamp)) stamp = 0;
+            return { raw, day, month, year, stamp };
+        }
+
+        function getReportStatusBadge(status) {
+            const key = String(status || '').toLowerCase();
+            if (key === 'entregado') return '<span class="inline-flex items-center rounded-full bg-emerald-100 text-emerald-700 px-2.5 py-1 text-[10px] font-black uppercase">Entregado</span>';
+            return '<span class="inline-flex items-center rounded-full bg-amber-100 text-amber-700 px-2.5 py-1 text-[10px] font-black uppercase">Pendiente</span>';
+        }
+
+        function getRequesterBadge(index) {
+            const colors = [
+                'bg-yellow-100 text-yellow-700 border-yellow-200',
+                'bg-slate-100 text-slate-700 border-slate-200',
+                'bg-orange-100 text-orange-700 border-orange-200',
+                'bg-blue-100 text-blue-700 border-blue-200',
+                'bg-indigo-100 text-indigo-700 border-indigo-200'
+            ];
+            const tone = colors[index] || 'bg-slate-50 text-slate-500 border-slate-200';
+            return `<span class="w-7 h-7 rounded-full border inline-flex items-center justify-center text-xs font-black ${tone}">${index + 1}</span>`;
+        }
+
+        function setReportListHTML(id, html, emptyText) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.innerHTML = html || `<div class="p-5 text-center text-sm text-slate-500">${emptyText}</div>`;
+        }
+
+        function normalizeReportProductQuery(value) {
+            return String(value || '')
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .toUpperCase()
+                .trim()
+                .replace(/\s+/g, ' ');
+        }
+
+        // Selector de productos dentro del reporte. No utiliza datalist del navegador.
+        let selectedReportProduct = null;
+        let visibleReportProductOptions = [];
+        let activeReportProductOption = -1;
+
+        function getReportProductOptions(query) {
+            const normalizedQuery = normalizeReportProductQuery(query);
+            if (!normalizedQuery) return [];
+            const indexed = new Map();
+            const addProduct = (product, historic = false) => {
+                const name = String(product?.nombre || product?.nombre_articulo || '').trim();
+                if (!name) return;
+                const normalizedName = normalizeReportProductQuery(name);
+                const code = String(product?.id_articulo || '').trim();
+                const key = normalizedName;
+                const incoming = {
+                    id: String(product?.id || product?.articulo_id || ''),
+                    name, code, normalizedName,
+                    imageUrl: String(product?.imagen_url || ''),
+                    category: String(product?.categoria || ''),
+                    shelf: String(product?.estante || '')
+                };
+                if (!indexed.has(key)) indexed.set(key, incoming);
+                else {
+                    const current = indexed.get(key);
+                    // Priorizar foto, código y ubicación del catálogo sobre filas históricas.
+                    if (!current.imageUrl && incoming.imageUrl) current.imageUrl = incoming.imageUrl;
+                    if (!current.code && incoming.code) current.code = incoming.code;
+                    if (!current.id && incoming.id) current.id = incoming.id;
+                    if (!current.category && incoming.category) current.category = incoming.category;
+                    if (!current.shelf && incoming.shelf) current.shelf = incoming.shelf;
+                }
+            };
+            // Los artículos del catálogo incluyen imagen, nombre, código y estante.
+            articulosVenta.forEach(article => addProduct(article));
+            // También permitir buscar materiales históricos que ya no estén en catálogo.
+            salidasVenta.forEach(row => addProduct(row, true));
+            const options = [...indexed.values()].filter(option =>
+                option.normalizedName.includes(normalizedQuery) ||
+                normalizeReportProductQuery(option.code).includes(normalizedQuery)
+            );
+            options.sort((a, b) => {
+                const aExact = a.normalizedName === normalizedQuery || normalizeReportProductQuery(a.code) === normalizedQuery;
+                const bExact = b.normalizedName === normalizedQuery || normalizeReportProductQuery(b.code) === normalizedQuery;
+                if (aExact !== bExact) return aExact ? -1 : 1;
+                const aStarts = a.normalizedName.startsWith(normalizedQuery);
+                const bStarts = b.normalizedName.startsWith(normalizedQuery);
+                if (aStarts !== bStarts) return aStarts ? -1 : 1;
+                return a.name.localeCompare(b.name, 'es');
+            });
+            return options.slice(0, 12);
+        }
+
+        function safeReportProductImageUrl(value) {
+            if (!value) return '';
+            if (/^data:image\/(png|jpe?g|webp|gif);base64,/i.test(value)) return value;
+            try {
+                const url = new URL(String(value), window.location.href);
+                return (url.protocol === 'https:' || url.protocol === 'http:') ? url.href : '';
+            } catch (_) { return ''; }
+        }
+
+        function hideReportProductSuggestions() {
+            const results = document.getElementById('reports-product-results');
+            const input = document.getElementById('reports-product-search');
+            if (results) results.classList.add('hidden');
+            if (input) {
+                input.setAttribute('aria-expanded', 'false');
+                input.removeAttribute('aria-activedescendant');
+            }
+            visibleReportProductOptions = [];
+            activeReportProductOption = -1;
+        }
+
+        function updateActiveReportProductOption() {
+            const results = document.getElementById('reports-product-results');
+            const input = document.getElementById('reports-product-search');
+            if (!results || !input) return;
+            results.querySelectorAll('[role="option"]').forEach((button, index) => {
+                const active = index === activeReportProductOption;
+                button.classList.toggle('bg-indigo-50', active);
+                button.setAttribute('aria-selected', String(active));
+                if (active) button.scrollIntoView({block:'nearest'});
+            });
+            if (activeReportProductOption >= 0) input.setAttribute('aria-activedescendant', `reports-product-option-${activeReportProductOption}`);
+            else input.removeAttribute('aria-activedescendant');
+        }
+
+        function showReportProductSuggestions() {
+            const input = document.getElementById('reports-product-search');
+            const results = document.getElementById('reports-product-results');
+            if (!input || !results) return;
+            const query = normalizeReportProductQuery(input.value);
+            if (!query) { hideReportProductSuggestions(); return; }
+            visibleReportProductOptions = getReportProductOptions(query);
+            activeReportProductOption = -1;
+            results.replaceChildren();
+
+            if (!visibleReportProductOptions.length) {
+                const empty = document.createElement('p');
+                empty.className = 'p-4 text-xs text-slate-500 text-center font-bold uppercase';
+                empty.textContent = 'Sin productos coincidentes';
+                results.appendChild(empty);
+            } else {
+                visibleReportProductOptions.forEach((product, index) => {
+                    const button = document.createElement('button');
+                    button.type = 'button';
+                    button.id = `reports-product-option-${index}`;
+                    button.setAttribute('role', 'option');
+                    button.setAttribute('aria-selected', 'false');
+                    button.className = 'w-full flex items-center gap-3 px-3 py-2 text-left border-b border-slate-100 last:border-0 hover:bg-indigo-50 focus:bg-indigo-50 focus:outline-none';
+
+                    const picture = document.createElement('span');
+                    picture.className = 'w-11 h-11 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center shrink-0 overflow-hidden';
+                    const imageUrl = safeReportProductImageUrl(product.imageUrl);
+                    if (imageUrl) {
+                        const img = document.createElement('img');
+                        img.src = imageUrl;
+                        img.alt = product.name;
+                        img.loading = 'lazy';
+                        img.className = 'w-full h-full object-cover';
+                        img.onerror = () => {
+                            picture.replaceChildren();
+                            const icon = document.createElement('span');
+                            icon.textContent = '📦';
+                            picture.appendChild(icon);
+                        };
+                        picture.appendChild(img);
+                    } else {
+                        const icon = document.createElement('span');
+                        icon.textContent = '📦';
+                        picture.appendChild(icon);
+                    }
+                    const description = document.createElement('span');
+                    description.className = 'flex-1 min-w-0';
+                    const label = document.createElement('span');
+                    label.className = 'block text-xs font-black text-slate-800 uppercase break-words';
+                    label.textContent = product.name;
+                    const meta = document.createElement('span');
+                    meta.className = 'block text-[10px] font-semibold text-slate-500 mt-0.5 uppercase';
+                    meta.textContent = [product.code ? `CÓD: ${product.code}` : '', product.category ? `CAT: ${product.category}` : ''].filter(Boolean).join(' · ');
+                    description.append(label, meta);
+                    button.append(picture, description);
+                    button.addEventListener('click', () => selectReportProduct(product));
+                    results.appendChild(button);
+                });
+            }
+            results.classList.remove('hidden');
+            input.setAttribute('aria-expanded', 'true');
+        }
+
+        function selectReportProduct(product) {
+            const input = document.getElementById('reports-product-search');
+            if (!input || !product) return;
+            selectedReportProduct = { id: String(product.id || ''), name: product.name, code: product.code, normalizedName: product.normalizedName };
+            input.value = product.name;
+            hideReportProductSuggestions();
+            renderReports();
+        }
+
+        function handleReportProductInput() {
+            selectedReportProduct = null;  // Volver a coincidencia de texto mientras se escribe.
+            renderReports();
+            showReportProductSuggestions();
+        }
+
+        function handleReportProductKeydown(event) {
+            const results = document.getElementById('reports-product-results');
+            if (!results) return;
+            if (event.key === 'Escape') { hideReportProductSuggestions(); return; }
+            if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+                event.preventDefault();
+                if (results.classList.contains('hidden')) showReportProductSuggestions();
+                if (!visibleReportProductOptions.length) return;
+                if (event.key === 'ArrowDown') activeReportProductOption = (activeReportProductOption + 1) % visibleReportProductOptions.length;
+                else activeReportProductOption = (activeReportProductOption - 1 + visibleReportProductOptions.length) % visibleReportProductOptions.length;
+                updateActiveReportProductOption();
+            } else if (event.key === 'Enter' && !results.classList.contains('hidden') && visibleReportProductOptions.length) {
+                event.preventDefault();
+                selectReportProduct(visibleReportProductOptions[Math.max(0, activeReportProductOption)]);
+            }
+        }
+
+        // Cerrar las sugerencias al tocar fuera del campo, sin alterar otros menús.
+        document.addEventListener('pointerdown', (event) => {
+            const wrapper = document.getElementById('reports-product-search-wrapper');
+            if (wrapper && !wrapper.contains(event.target)) hideReportProductSuggestions();
+        });
+
+        function clearReportProductFilter() {
+            const input = document.getElementById('reports-product-search');
+            if (!input) return;
+            selectedReportProduct = null;
+            input.value = '';
+            hideReportProductSuggestions();
+            renderReports();
+            input.focus();
+        }
+
         function renderReports() {
-            const tbody = document.getElementById('reports-table-body');
-            const isAdmin = currentUserRole === 'admin';
-            if(!tbody) return;
+            const monthEl = document.getElementById('filter-month');
+            const yearEl = document.getElementById('filter-year');
+            if(!monthEl || !yearEl) return;
+
+            const statPeople = document.getElementById('rep-stat-people');
+            const statTotal = document.getElementById('rep-stat-total');
+            const statTop = document.getElementById('rep-stat-top');
+            const statTopUnits = document.getElementById('rep-stat-top-units');
 
             if (!hasGeneratedReport) {
-                tbody.innerHTML = `<tr><td colspan="${isAdmin ? 6 : 5}" class="p-10 text-center text-slate-400 font-bold uppercase tracking-widest text-[9px]">TOCA "GENERAR REPORTE" PARA DESCARGAR LOS DATOS.</td></tr>`;
-                document.getElementById('rep-stat-total').innerText = '0';
-                document.getElementById('rep-stat-units').innerText = '0';
-                document.getElementById('rep-stat-top').innerText = 'SIN DATOS';
+                if (statPeople) statPeople.innerText = '0';
+                if (statTotal) statTotal.innerText = '0';
+                if (statTop) statTop.innerText = 'Sin datos';
+                if (statTopUnits) statTopUnits.innerText = '0 unidades';
+                const productStatus = document.getElementById('reports-product-status');
+                if (productStatus) productStatus.textContent = 'Toca "Ver reporte" para cargar la información del mes seleccionado.';
+                const msg = 'Toca "Ver reporte" para cargar la información.';
+                setReportListHTML('reports-top-requesters', '', msg);
+                setReportListHTML('reports-recent-orders', '', msg);
+                setReportListHTML('reports-top-items', '', msg);
+                lucide.createIcons();
                 return;
             }
 
-            const d = document.getElementById('filter-day') ? document.getElementById('filter-day').value : 'all';
-            const m = document.getElementById('filter-month').value;
-            const y = document.getElementById('filter-year').value;
-            const userF = document.getElementById('filter-user') ? document.getElementById('filter-user').value.toUpperCase().trim() : '';
+            const m = monthEl.value;
+            const y = yearEl.value;
+            const productSearch = normalizeReportProductQuery(document.getElementById('reports-product-search')?.value);
+            const exactProduct = selectedReportProduct && selectedReportProduct.normalizedName === productSearch
+                ? selectedReportProduct : null;
+            const productsById = productSearch
+                ? new Map(articulosVenta.map(article => [String(article.id), article]))
+                : null;
 
-            const filtered = salidasVenta.filter(s => {
-                if (!s.fecha) return false;
-                
-                // Filtro de seguridad: El supervisor solo puede ver sus propios registros
-                if (currentUserRole === 'supervisor' && s.supervisor !== currentUserName.toUpperCase()) {
-                    return false;
+            // Filtrar las filas ANTES de sumar pedidos, solicitantes y materiales.
+            // Esto permite ver cuántas unidades del producto solicitó cada cuenta.
+            const filtered = salidasVenta.filter(row => {
+                if (!row || !row.fecha) return false;
+                if (currentUserRole === 'supervisor' && String(row.supervisor || '').toUpperCase() !== String(currentUserName || '').toUpperCase()) return false;
+                const meta = getReportDateMeta(row);
+                if (meta.month !== m || meta.year !== y) return false;
+                if (!productSearch) return true;
+                const article = productsById.get(String(row.articulo_id));
+                if (exactProduct) {
+                    return (exactProduct.id && String(row.articulo_id || '') === exactProduct.id) ||
+                        normalizeReportProductQuery(row.nombre_articulo || article?.nombre) === exactProduct.normalizedName;
                 }
-
-                const p = s.fecha.split('/');
-                if (p.length !== 3) return false;
-                const itemDay = p[0].padStart(2, '0');
-                const itemMonth = p[1].padStart(2, '0');
-                const itemYear = p[2];
-                const dayMatch = (d === 'all' || itemDay === d);
-                const dateMatch = dayMatch && itemMonth === m && itemYear === y;
-                const userMatch = !userF || (s.recibe && s.recibe.toUpperCase().includes(userF)) || (s.supervisor && s.supervisor.toUpperCase().includes(userF));
-                return dateMatch && userMatch;
+                return [row.nombre_articulo, row.id_articulo, article?.nombre, article?.id_articulo]
+                    .some(value => normalizeReportProductQuery(value).includes(productSearch));
             });
 
-            document.getElementById('rep-stat-total').innerText = filtered.length;
-            document.getElementById('rep-stat-units').innerText = filtered.reduce((a, c) => a + c.cantidad, 0);
+            const orderMap = new Map();
+            const itemRank = new Map();
+            const requesterRank = new Map();
 
-            const rank = {};
-            filtered.forEach(s => { const k = s.nombre_articulo.toUpperCase(); rank[k] = (rank[k]||0) + s.cantidad; });
-            const sorted = Object.entries(rank).sort((a,b) => b[1] - a[1]);
-            document.getElementById('rep-stat-top').innerText = sorted.length > 0 ? sorted[0][0] : 'SIN DATOS';
+            filtered.forEach(row => {
+                const meta = getReportDateMeta(row);
+                const orderId = String(row.pedido_id || row.id || `ROW-${meta.raw}-${row.nombre_articulo || ''}`);
+                const requesterAccount = resolveReportAccount(row);
+                const requester = String(row.recibe || 'SIN DESTINATARIO').trim().toUpperCase();
+                const itemName = String(row.nombre_articulo || 'SIN ARTÍCULO').trim().toUpperCase();
+                const qty = Number(row.cantidad || 0);
 
-            tbody.innerHTML = filtered.map(s => {
-                const actionTd = isAdmin ? `<td class="p-2.5 text-right w-16"><div class="flex justify-end gap-1"><button onclick="editSalesOutput('${s.id}')" class="p-1 text-slate-300 hover:text-indigo-600 transition" title="Editar"><i data-lucide="pencil" class="w-3.5 h-3.5"></i></button><button onclick="confirmDeletion('${s.id}', 'salesOutput')" class="p-1 text-slate-300 hover:text-red-500 transition" title="Eliminar"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button></div></td>` : '';
+                if (!orderMap.has(orderId)) {
+                    orderMap.set(orderId, {
+                        id: orderId,
+                        requester,
+                        fecha: row.fecha || '',
+                        status: row.estado_entrega || 'pendiente',
+                        supervisor: String(row.supervisor || '').trim().toUpperCase(),
+                        items: [],
+                        qty: 0,
+                        meta
+                    });
+                }
+                const order = orderMap.get(orderId);
+                order.items.push(row);
+                order.qty += qty;
+                if ((row.estado_entrega || '').toLowerCase() === 'pendiente') order.status = 'pendiente';
+                if (meta.stamp > order.meta.stamp) {
+                    order.fecha = row.fecha || order.fecha;
+                    order.meta = meta;
+                }
+
+                itemRank.set(itemName, (itemRank.get(itemName) || 0) + qty);
+
+                if (!requesterRank.has(requesterAccount.key)) {
+                    requesterRank.set(requesterAccount.key, {
+                        ...requesterAccount, orders: new Map(), units: 0,
+                        lastStamp: meta.stamp, lastDate: row.fecha || ''
+                    });
+                }
+                const requesterInfo = requesterRank.get(requesterAccount.key);
+                // Un pedido puede contener varios artículos: contar una sola vez.
+                if (!requesterInfo.orders.has(orderId)) {
+                    requesterInfo.orders.set(orderId, {
+                        id: orderId, fecha: row.fecha || '', meta,
+                        status: row.estado_entrega || '', recibe: requester,
+                        uso: row.para_uso_en || '', items: [], qty: 0
+                    });
+                }
+                const accountOrder = requesterInfo.orders.get(orderId);
+                accountOrder.items.push(row);
+                accountOrder.qty += qty;
+                if (String(row.estado_entrega || '').toLowerCase() === 'pendiente') accountOrder.status = 'pendiente';
+                if (meta.stamp >= accountOrder.meta.stamp) {
+                    accountOrder.meta = meta;
+                    accountOrder.fecha = row.fecha || accountOrder.fecha;
+                }
+                requesterInfo.units += qty;
+                if (meta.stamp >= requesterInfo.lastStamp) {
+                    requesterInfo.lastStamp = meta.stamp;
+                    requesterInfo.lastDate = row.fecha || requesterInfo.lastDate;
+                }
+            });
+
+            const orders = Array.from(orderMap.values()).sort((a,b) => b.meta.stamp - a.meta.stamp || String(b.id).localeCompare(String(a.id)));
+            const topItems = Array.from(itemRank.entries()).sort((a,b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+            const topRequesters = Array.from(requesterRank.values())
+                .map(entry => ({ ...entry, totalOrders: entry.orders.size }))
+                .sort((a,b) => b.totalOrders - a.totalOrders || b.units - a.units || a.name.localeCompare(b.name));
+
+            const productStatus = document.getElementById('reports-product-status');
+            if (productStatus) {
+                productStatus.textContent = productSearch
+                    ? `${orders.length} pedido(s) con ${filtered.length} registro(s) del producto buscado.`
+                    : 'Filtra los pedidos, las cuentas y las cantidades por material.';
+            }
+
+            if (statPeople) statPeople.innerText = String(topRequesters.length);
+            if (statTotal) statTotal.innerText = String(orders.length);
+            if (statTop) statTop.innerText = topItems[0] ? topItems[0][0] : 'Sin datos';
+            if (statTopUnits) statTopUnits.innerText = topItems[0] ? `${topItems[0][1]} unidades` : '0 unidades';
+
+            const accountSearch = String(document.getElementById('reports-account-search')?.value || '').trim().toUpperCase();
+            const shownAccounts = topRequesters.filter(entry =>
+                !accountSearch || entry.name.includes(accountSearch) || entry.email.toUpperCase().includes(accountSearch)
+            );
+            const requesterHTML = shownAccounts.map((entry, index) => {
+                const materialMap = new Map();
+                [...entry.orders.values()].forEach(order => {
+                    order.items.forEach(item => {
+                        const itemName = String(item.nombre_articulo || 'SIN ARTÍCULO').trim().toUpperCase();
+                        const materialKey = String(item.articulo_id || itemName);
+                        const qty = Number(item.cantidad || 0);
+                        const visual = getReportArticleVisual(item);
+                        if (!materialMap.has(materialKey)) {
+                            materialMap.set(materialKey, {
+                                key: materialKey,
+                                name: itemName,
+                                qty: 0,
+                                imageUrl: visual.imageUrl,
+                                category: visual.category,
+                                shelf: visual.shelf,
+                                recipients: new Map()
+                            });
+                        }
+                        const material = materialMap.get(materialKey);
+                        material.qty += qty;
+                        if (!material.imageUrl && visual.imageUrl) material.imageUrl = visual.imageUrl;
+                        if (!material.category && visual.category) material.category = visual.category;
+                        if (!material.shelf && visual.shelf) material.shelf = visual.shelf;
+                        // Tomar exactamente el campo NOMBRE DEL QUE RECIBE de cada salida.
+                        const recipient = canonicalReceiverName(item.recibe || order.recibe || 'SIN REGISTRO');
+                        if (!material.recipients.has(recipient)) {
+                            material.recipients.set(recipient, { qty: 0, movements: [] });
+                        }
+                        const recipientDetail = material.recipients.get(recipient);
+                        recipientDetail.qty += qty;
+                        recipientDetail.movements.push({ ...getReportDeliveryInfo(item, order), qty });
+                    });
+                });
+
+                const materials = [...materialMap.values()].sort((a,b) => b.qty - a.qty || a.name.localeCompare(b.name));
+                const materialHistory = materials.map(material => {
+                    const recipients = [...material.recipients.entries()]
+                        .sort((a,b) => b[1].qty - a[1].qty || a[0].localeCompare(b[0]));
+                    const recipientsHTML = recipients.map(([name, detail]) => {
+                        // Un destinatario puede recibir el mismo artículo varias veces.
+                        // Agrupar por fecha y estado, sumando las unidades de cada fecha.
+                        const byDate = new Map();
+                        detail.movements.forEach(movement => {
+                            const key = `${movement.kind}|${movement.date}`;
+                            if (!byDate.has(key)) byDate.set(key, { ...movement, qty: 0 });
+                            byDate.get(key).qty += movement.qty;
+                            byDate.get(key).stamp = Math.max(byDate.get(key).stamp, movement.stamp);
+                        });
+                        const dates = [...byDate.values()].sort((a,b) => b.stamp - a.stamp || a.date.localeCompare(b.date));
+                        const datesHTML = dates.map(movement => {
+                            const pending = movement.kind === 'pendiente';
+                            const legacy = movement.kind === 'sin_confirmacion';
+                            const tone = pending ? 'text-amber-700' : legacy ? 'text-slate-500' : 'text-emerald-700';
+                            const dateNote = pending ? ' · PENDIENTE' : legacy ? ' · SIN FECHA DE CONFIRMACIÓN' : '';
+                            return `
+                                <div class="flex items-center gap-2 py-2 px-2 border-t border-slate-100 first:border-t-0">
+                                    <div class="w-7 h-7 rounded-lg bg-white border border-slate-200 flex items-center justify-center shrink-0 overflow-hidden">
+                                        ${material.imageUrl ? `<img src="${escapeOrderHTML(material.imageUrl)}" loading="lazy" class="w-full h-full object-cover" alt="${escapeOrderHTML(material.name)}">` : '<i data-lucide="package" class="w-3.5 h-3.5 text-indigo-500"></i>'}
+                                    </div>
+                                    <div class="min-w-0 flex-1">
+                                        <p class="text-[10px] font-black uppercase text-slate-800 break-words">${escapeOrderHTML(material.name)}</p>
+                                        <p class="text-[10px] font-bold ${tone}">${movement.label} ${escapeOrderHTML(movement.date)}${dateNote}</p>
+                                    </div>
+                                    <span class="text-[10px] font-black text-slate-700 shrink-0">${movement.qty} u.</span>
+                                </div>`;
+                        }).join('');
+                        return `
+                            <details class="report-recipient-details group/recipient border-b border-slate-100 last:border-b-0">
+                                <summary class="list-none cursor-pointer flex items-center justify-between gap-2 py-2.5 hover:bg-indigo-50 rounded-lg [&::-webkit-details-marker]:hidden" title="Tocar para consultar las fechas de este material">
+                                    <div class="flex items-center gap-2 min-w-0">
+                                        <i data-lucide="user-round" class="w-3.5 h-3.5 shrink-0 text-indigo-500"></i>
+                                        <span class="text-xs font-bold text-slate-700 break-words">${escapeOrderHTML(name)}</span>
+                                    </div>
+                                    <div class="flex items-center gap-2 shrink-0">
+                                        <span class="text-[10px] font-black text-slate-600">${detail.qty} u.</span>
+                                        <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-indigo-500 transition-transform group-open/recipient:rotate-180"></i>
+                                    </div>
+                                </summary>
+                                <div class="rounded-lg bg-white border border-slate-200 mb-2 px-1 py-0.5">
+                                    ${datesHTML}
+                                </div>
+                            </details>`;
+                    }).join('');
+                    return `
+                        <details class="report-material-details group bg-white border border-slate-200 rounded-xl overflow-hidden">
+                            <summary class="list-none cursor-pointer px-3 py-3 flex items-center gap-3 hover:bg-indigo-50 transition [&::-webkit-details-marker]:hidden" title="Tocar para ver el nombre del que recibe">
+                                <div class="w-11 h-11 rounded-xl border border-slate-200 bg-slate-50 overflow-hidden shrink-0 flex items-center justify-center">
+                                    ${material.imageUrl ? `<img src="${escapeOrderHTML(material.imageUrl)}" loading="lazy" class="w-full h-full object-cover" alt="Foto de ${escapeOrderHTML(material.name)}">` : '<i data-lucide="package" class="w-5 h-5 text-slate-400"></i>'}
+                                </div>
+                                <div class="min-w-0 flex-1">
+                                    <div class="flex items-start justify-between gap-2">
+                                        <p class="font-black text-sm text-slate-900 uppercase break-words">${escapeOrderHTML(material.name)}</p>
+                                        <span class="shrink-0 text-sm font-black text-indigo-700">${material.qty} u.</span>
+                                    </div>
+                                    <div class="mt-1 flex flex-wrap gap-1.5">
+                                        ${material.category ? `<span class="text-[9px] font-black text-indigo-700 bg-indigo-50 rounded px-1.5 py-0.5">CAT: ${escapeOrderHTML(material.category)}</span>` : ''}
+                                        ${material.shelf ? `<span class="text-[9px] font-black text-slate-600 bg-slate-100 rounded px-1.5 py-0.5">ESTANTE: ${escapeOrderHTML(material.shelf)}</span>` : ''}
+                                    </div>
+                                    <p class="text-[10px] text-indigo-600 mt-1 font-bold">Toca para ver quién recibe</p>
+                                </div>
+                                <i data-lucide="chevron-down" class="material-chevron w-4 h-4 shrink-0 text-indigo-500"></i>
+                            </summary>
+                            <div class="px-3 py-2 bg-slate-50 border-t border-slate-200">
+                                <p class="text-[10px] font-black text-slate-500 uppercase mb-1">Nombre del que recibe</p>
+                                ${recipientsHTML || '<p class="text-xs text-slate-500 py-2">Sin destinatarios registrados</p>'}
+                            </div>
+                        </details>`;
+                }).join('');
+
                 return `
-                <tr class="hover:bg-slate-50 transition border-b border-slate-100">
-                    <td class="p-2.5">${s.fecha}</td>
-                    <td class="p-2.5 truncate max-w-[120px]">${s.nombre_articulo}</td>
-                    <td class="p-2.5 text-center"><span class="bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded font-black">${s.cantidad}</span></td>
-                    <td class="p-2.5 truncate max-w-[100px]">${s.recibe}</td>
-                    <td class="p-2.5 text-[9px] text-slate-400 font-bold">${s.supervisor}</td>
-                    ${actionTd}
-                </tr>
-            `}).join('');
+                    <details class="group">
+                        <summary class="list-none cursor-pointer px-3 py-3 flex items-center gap-3 hover:bg-indigo-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-500 [&::-webkit-details-marker]:hidden">
+                            ${getRequesterBadge(index)}
+                            <div class="min-w-0 flex-1">
+                                <p class="font-black text-sm text-slate-900 break-words">${escapeOrderHTML(entry.name)}</p>
+                                ${entry.email ? `<p class="text-[10px] text-slate-500 truncate">${escapeOrderHTML(entry.email)}</p>` : ''}
+                                <p class="text-[11px] text-slate-500">${entry.totalOrders} pedido(s) · ${entry.units} unidad(es) · Último: ${escapeOrderHTML(entry.lastDate || 'Sin fecha')}</p>
+                            </div>
+                            <span class="text-xs font-black text-indigo-700 shrink-0">${entry.totalOrders}</span>
+                            <i data-lucide="chevron-down" class="w-4 h-4 text-indigo-600 shrink-0 transition-transform group-open:rotate-180"></i>
+                        </summary>
+                        <div class="px-3 pb-3 pt-1 bg-slate-50 border-t border-slate-100 space-y-2">
+                            <p class="text-[10px] font-black text-slate-500 uppercase">Materiales del mes · ${materials.length} artículo(s) distintos</p>
+                            ${materialHistory}
+                        </div>
+                    </details>`;
+            }).join('');
+            setReportListHTML('reports-top-requesters', requesterHTML,
+                accountSearch ? 'No hay cuentas que coincidan con la búsqueda.' : 'No hay cuentas con pedidos en este período.');
 
-            if(filtered.length === 0) tbody.innerHTML = `<tr><td colspan="${isAdmin ? 6 : 5}" class="p-10 text-center text-slate-400 font-bold uppercase tracking-widest text-[9px]">SIN REGISTROS PARA ESTA BÚSQUEDA.</td></tr>`;
+            const recentHTML = orders.slice(0,5).map(order => {
+                const firstItem = order.items[0]?.nombre_articulo ? String(order.items[0].nombre_articulo).toUpperCase() : 'SIN ARTÍCULO';
+                const extraItems = Math.max(0, order.items.length - 1);
+                const summary = extraItems > 0 ? `${firstItem} +${extraItems}` : firstItem;
+                return `
+                <div class="px-4 py-3">
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="min-w-0 flex-1">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <p class="font-black text-sm text-slate-900 truncate">${escapeOrderHTML(order.requester)}</p>
+                                ${getReportStatusBadge(order.status)}
+                            </div>
+                            <p class="text-xs text-slate-500 mt-1">${escapeOrderHTML(order.fecha || 'Sin fecha')} · ${escapeOrderHTML(order.id)}</p>
+                            <p class="text-xs text-slate-700 mt-1 uppercase truncate">${escapeOrderHTML(summary)}</p>
+                        </div>
+                        <div class="text-right shrink-0">
+                            <p class="text-sm font-black text-slate-900">${order.qty}</p>
+                            <p class="text-[10px] text-slate-500 uppercase">Unidades</p>
+                        </div>
+                    </div>
+                </div>`;
+            }).join('');
+            setReportListHTML('reports-recent-orders', recentHTML, 'No hay pedidos en este período.');
+
+            const topItemsHTML = topItems.slice(0,5).map((entry, index) => `
+                <div class="px-4 py-3 flex items-center gap-3">
+                    ${getRequesterBadge(index)}
+                    <div class="min-w-0 flex-1">
+                        <p class="font-black text-sm text-slate-900 uppercase truncate">${escapeOrderHTML(entry[0])}</p>
+                    </div>
+                    <div class="text-right shrink-0">
+                        <p class="text-sm font-black text-slate-900">${entry[1]}</p>
+                        <p class="text-[10px] text-slate-500 uppercase">Unidades</p>
+                    </div>
+                </div>`).join('');
+            setReportListHTML('reports-top-items', topItemsHTML, 'No hay artículos registrados en este período.');
+
             lucide.createIcons();
         }
 
@@ -2644,7 +3514,7 @@
             event.preventDefault();
             if (!editingPendingOrderId || pendingOrderBusy) return;
             if (!editPendingOrderItems.length) { showToast('AGREGA AL MENOS UN ARTÍCULO', 'error'); return; }
-            const receiver = document.getElementById('edit-pending-receiver').value.trim().toUpperCase();
+            const receiver = canonicalReceiverName(document.getElementById('edit-pending-receiver').value);
             const use = document.getElementById('edit-pending-use').value.trim().toUpperCase();
             if (!receiver || !use) { showToast('COMPLETA LOS DATOS DEL PEDIDO','error'); return; }
             const affectedIds = [...editingPendingOrderOriginal.map(row=>row.articulo_id),...editPendingOrderItems.map(item=>item.id)];
@@ -2657,6 +3527,7 @@
                 });
                 if (error) throw error;
                 pendingOrderBusy=false;
+                rememberReceiverName(receiver);
                 closePendingOrderEditor();
                 showToast('PEDIDO ACTUALIZADO Y STOCK AJUSTADO','success');
                 await refreshOrdersAfterMutation(affectedIds);
@@ -3187,7 +4058,8 @@
 
         async function handleSalesOutputSubmit(e) {
             e.preventDefault(); if(selectedSalesOutArticles.length === 0) { showToast('SELECCIONA ARTÍCULOS', 'error'); return; }
-            const uso = document.getElementById('sales-out-uso').value.trim().toUpperCase(); const recibe = document.getElementById('sales-out-recibe').value.trim().toUpperCase(); const fecha = new Date().toLocaleDateString('es-ES');
+            const uso = document.getElementById('sales-out-uso').value.trim().toUpperCase(); const recibe = canonicalReceiverName(document.getElementById('sales-out-recibe').value); const fecha = new Date().toLocaleDateString('es-ES');
+            if (!validReceiverName(recibe)) { showToast('SELECCIONA QUIÉN RECIBE', 'error'); openReceiverPicker('sales-out-recibe'); return; }
             const btn = document.querySelector('#form-sales-output button[type="submit"]'); btn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> GUARDANDO...'; btn.disabled = true; lucide.createIcons();
             try {
                 if (currentEditingSalesOutputId) {
@@ -3247,6 +4119,7 @@
                     const stockError = stockResults.find(result => result.error);
                     if (stockError) throw stockError.error;
                 }
+                rememberReceiverName(recibe);
                 renderReports(); renderSalesCatalog();
                 showToast(currentUserRole === 'supervisor' ? 'PEDIDO REGISTRADO: PENDIENTE DE ENTREGA' : 'SALIDA REGISTRADA');
                 closeModal('modal-sales-output');
